@@ -34,11 +34,36 @@ if os.path.exists(odds_f):
     odds = {"checked_at": o.get("generated_at"), "pending_games": o.get("pending_games"),
             "providers": {k: {x: v.get(x) for x in ("configured", "state", "decision", "http", "error", "events", "quotes",
                                                      "unmatched_players", "last_fetch")} for k, v in (o.get("providers") or {}).items()}}
+# settlement audit trail: which cloud run settled which games against which frozen snapshots (append-only file)
+import glob, sqlite3
+settled_now, D_ = [], os.environ.get("NBA_DATA_DIR", "")
+since = os.environ.get("RUN_STARTED_AT")
+if since and D_:
+    for db in sorted(glob.glob(os.path.join(D_, "live", "*.db"))):
+        try:
+            c = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+            rows = c.execute("""SELECT game_id, snapshot_id, category, stack, settle_method, COUNT(*), MIN(settled_at)
+                                FROM settlements WHERE settled_at >= ? GROUP BY game_id, snapshot_id, category""", (since,)).fetchall()
+        except sqlite3.Error:
+            continue
+        for g_, sid, cat, stack, meth, n, at in rows:
+            settled_now.append({"db": os.path.basename(db), "game_id": g_, "snapshot_id": sid, "category": cat, "stack": stack,
+                                "settle_method": meth, "rows": n, "settled_at": at})
+    if settled_now:
+        with open(os.path.join(D_, "live", "settlement_audit.jsonl"), "a") as fh:
+            for x in settled_now:
+                fh.write(json.dumps({**x, "run_id": os.environ.get("GITHUB_RUN_ID"), "run_started_at": since}) + "\n")
+audit_f = os.path.join(D_, "live", "settlement_audit.jsonl") if D_ else ""
+audit = [json.loads(l) for l in open(audit_f)] if audit_f and os.path.exists(audit_f) else []
 status = {"run_finished_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
           "run_url": f"{os.environ.get('GITHUB_SERVER_URL','')}/{os.environ.get('GITHUB_REPOSITORY','')}/actions/runs/{os.environ.get('GITHUB_RUN_ID','')}",
           "runner": "GitHub Actions (ubuntu-latest)", "steps": steps,
           "sources": {k: {"ok": v.get("http") == 200, "http": v.get("http")} for k, v in probe.items() if isinstance(v, dict)},
           "archive": cyc.get("archive"), "snapshots_frozen_this_run": frozen, "games_settled_this_run": settled,
-          "odds": odds, "ok": not errors, "errors": errors, "warnings": warnings}
+          "odds": odds,
+          "settlement_this_run": settled_now,
+          "cloud_settlements_total": {"runs": len({a["run_id"] for a in audit}), "games": len({a["game_id"] for a in audit}),
+                                      "first": min((a["settled_at"] for a in audit), default=None)},
+          "ok": not errors, "errors": errors, "warnings": warnings}
 json.dump(status, open(out, "w"), indent=1)
 print(json.dumps(status, indent=1))

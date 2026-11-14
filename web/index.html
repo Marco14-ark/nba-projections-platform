@@ -855,6 +855,30 @@ function mktTable(bm) {
   return `<div class="table-wrap"><table><thead><tr><th>Mercado</th><th class="n">n</th><th class="n">Error medio</th><th class="n">Cobertura P10–P90</th></tr></thead><tbody>
     ${(bm || []).map(r => `<tr><td>${esc(r.market)}</td><td class="n">${r.n}</td><td class="n">${f1(r.mae)}</td><td class="n">${pct(r.cov80)}</td></tr>`).join("")}</tbody></table></div>`;
 }
+function v10Card(R) {
+  if (!R) return "";
+  const ci = (v, c) => v == null ? "—" : `<span class="${c && c[1] < 0 ? "" : c && c[0] > 0 ? "" : "muted"}" style="${c && c[1] < 0 ? "color:var(--good)" : c && c[0] > 0 ? "color:var(--bad)" : ""}">${v > 0 ? "+" : ""}${v}${c ? ` [${c[0]}, ${c[1]}]` : ""}</span>`;
+  const seasons = Object.keys(R.minutes || {}).sort();
+  const minRows = seasons.flatMap(s => Object.entries(R.minutes[s]).filter(([k]) => !["CHAMPION", "by_profile_champion"].includes(k)).map(([k, v]) =>
+    `<tr><td>${esc(k)}</td><td>${esc(s)}</td><td class="n">${f1(R.minutes[s].CHAMPION.mae)} → ${f1(v.mae)}</td><td class="n">${ci(v.d_mae, v.d_mae_ci)}</td><td class="n">${ci(v.d_crps, v.d_crps_ci)}</td><td class="n">${pct(v.cov80)}</td></tr>`)).join("");
+  const st = R.stack || {};
+  const MK = ["PTS", "REB", "AST", "PRA", "FGA", "3PA"];
+  const stRows = Object.keys(st).sort().flatMap(s => Object.entries(st[s]).filter(([k]) => k !== "CHAMPION").map(([k, v]) =>
+    `<tr><td>${esc(k)}</td><td>${esc(s)}</td>${MK.map(m => `<td class="n">${v.props[m] ? ci(v.props[m].d_crps, v.props[m].d_crps_ci) : "—"}</td>`).join("")}<td class="n">${ci(v.games.d_total_mae, v.games.d_total_mae_ci)}</td><td class="n">${ci(v.games.d_margin_mae, v.games.d_margin_mae_ci)}</td><td class="n">${ci(v.games.d_ml_brier, v.games.d_ml_brier_ci)}</td></tr>`)).join("");
+  const C = R.correlations || {};
+  const cs = Object.values(C)[0];
+  const LBL = { tm_pts: "Puntos entre compañeros", tm_reb: "Rebotes entre compañeros", ast_tm_pts: "Asistencias vs puntos de compañeros", pts_ast: "Puntos y asistencias (mismo jugador)", pts_reb: "Puntos y rebotes", fga_pts: "FGA y puntos", fg3a_fg3m: "3PA y 3PM", tm_min: "Minutos entre compañeros", min_absmargin_starters: "Minutos de titulares vs |margen|", home_away_pts: "Puntos local vs visitante", poss_team_fga: "Posesiones vs FGA del equipo" };
+  const corrRows = cs ? Object.keys(LBL).map(k => `<tr><td>${LBL[k]}</td><td class="n">${cs.real_residual_corr[k] ? cs.real_residual_corr[k].r : "—"}</td>${Object.keys(cs.sim_corr).map(c => `<td class="n">${cs.sim_corr[c][k] ?? "—"}</td>`).join("")}</tr>`).join("") : "";
+  return `<div class="card"><h3>Investigación V10: motores de minutos, tiros y simulación conjunta</h3>
+    <div class="small muted">Backtests reconstruidos con información previa a cada fecha, mismos partidos y mismas semillas. Diferencias contra el Champion con IC 95% por bootstrap de partidos. Negativo = mejor; en verde, mejora significativa.</div>
+    <div class="small"><b>Minutos</b></div>
+    <div class="table-wrap" style="border:0"><table><thead><tr><th>Challenger</th><th>Temporada</th><th class="n">MAE</th><th class="n">ΔMAE</th><th class="n">ΔCRPS</th><th class="n">Cob. 80%</th></tr></thead><tbody>${minRows}</tbody></table></div>
+    <div class="small"><b>Efecto en Player Props (ΔCRPS) y Game Markets</b></div>
+    <div class="table-wrap" style="border:0"><table><thead><tr><th>Challenger</th><th>Temporada</th>${MK.map(m => `<th class="n">${m}</th>`).join("")}<th class="n">ΔMAE total</th><th class="n">ΔMAE margen</th><th class="n">ΔBrier ML</th></tr></thead><tbody>${stRows}</tbody></table></div>
+    ${corrRows ? `<div class="small"><b>Correlaciones: residuales reales vs simulación</b> (${cs.n_games} partidos 2026-27)</div>
+    <div class="table-wrap" style="border:0"><table><thead><tr><th>Par</th><th class="n">Real</th>${Object.keys(cs.sim_corr).map(c => `<th class="n">${esc(c)}</th>`).join("")}</tr></thead><tbody>${corrRows}</tbody></table></div>` : ""}
+    ${R.decision ? `<div class="small">${R.decision.map(esc).join("<br>")}</div>` : ""}</div>`;
+}
 function v9Card(V) {
   if (!V) return "";
   const T = V.totals_decomposition, C = V.game_challengers, Dp = V.props_error_decomposition, M = V.minutes_audit;
@@ -919,6 +943,7 @@ function viewResults() {
     <div class="two">${sh || `<div class="empty">Sin challengers liquidados.</div>`}</div>
     <h3>Validación histórica (walk-forward, sin fugas)</h3>
     ${gmVal(H.game_markets_v8)}
+    ${v10Card(H.v10)}
     ${v9Card(H.v9_research)}
     <div class="two">
       <div class="card"><h3>Calibración de probabilidades (BETA_MKT)</h3>

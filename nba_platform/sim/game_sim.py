@@ -43,6 +43,7 @@ class TeamInput:
     available: list[str]
     starters: list[str]
     caps: dict[str, float] = field(default_factory=dict)
+    confirmed: bool = False          # official starting five known (V10 start-mix challenger only)
 
 
 @dataclass
@@ -208,9 +209,10 @@ class GameSimulator:
             bx = self.m.bx_from_margin(np.where(tie, 0.0, latent), n_ot, seed)
             shock = rho * (latent - mu) / (2.0 * exp_pts)
         mg = None if latent is None else np.where(n_ot > 0, 0.0, latent)
-        mh = self.m.simulate_team(home.team_id, home.available, home.starters, home.caps, bx, n_ot, seed, margin=mg)
+        mh = self.m.simulate_team(home.team_id, home.available, home.starters, home.caps, bx, n_ot, seed, margin=mg,
+                                  starters_confirmed=home.confirmed)
         ma = self.m.simulate_team(away.team_id, away.available, away.starters, away.caps, bx, n_ot, seed + 1,
-                                  margin=None if mg is None else -mg)
+                                  margin=None if mg is None else -mg, starters_confirmed=away.confirmed)
         gm = 48.0 + 5.0 * n_ot
         pace = r_pace.normal(self.r.expected_pace(home.team_id, away.team_id), self.r.pace_sd, n)
         P = np.maximum(60, np.round(pace * gm / 48.0)).astype(int)

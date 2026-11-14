@@ -32,7 +32,8 @@ def _stat(df: pd.DataFrame, cols: list[str]) -> np.ndarray:
 
 def walk_forward(logs: pd.DataFrame, games: pd.DataFrame, dates: list[str], n_sims: int = 4000,
                  seed: int = 17, last_n: int = 10, progress: bool = False, anchor: str = "bottom_up",
-                 minutes_cfg=None, rates_cfg=None, rating_blend: tuple | None = None, segments=None):
+                 minutes_cfg=None, rates_cfg=None, rating_blend: tuple | None = None, segments=None,
+                 joint=None, markets: dict | None = None):
     """rating_blend=(w_v1, w_v2): anchor the script on w_v1*point-diff + w_v2*lineup-RAPM rating
     (NBA_TEAM_RATING_V2) computed from available players and pregame minutes proxies."""
     from ..rating.team_rating import LineupRating, PointDiffRating, RatingConfig, rest_days
@@ -53,7 +54,7 @@ def walk_forward(logs: pd.DataFrame, games: pd.DataFrame, dates: list[str], n_si
         avail_hist = hist[~hist["not_playing_reason"].fillna("").astype(str).str.startswith("INACTIVE")]
         mproxy = avail_hist.sort_values("game_date_et").groupby("player_id").tail(10).groupby("player_id")["minutes"].mean() \
             if rating_blend else None
-        sim = GameSimulator(eng, rates)
+        sim = GameSimulator(eng, rates, joint)
         ph = played_all[played_all["game_date_et"] < d]
         last = {p: g.tail(last_n) for p, g in ph.groupby("player_id")}
         tl = _team_last(ghist, last_n)
@@ -96,7 +97,7 @@ def walk_forward(logs: pd.DataFrame, games: pd.DataFrame, dates: list[str], n_si
                     if keep.sum() < 50:
                         continue
                     L = last.get(pid)
-                    for mk, cols in MARKETS.items():
+                    for mk, cols in (markets or MARKETS).items():
                         x = sum(T.stats[c][:, k] for c in cols).astype(float)[keep]
                         y = float(sum(act.loc[pid, c] for c in cols))
                         prm = eng.player_params(pid, T.team_id, tin.available, pid in tin.starters)
@@ -116,7 +117,7 @@ def walk_forward(logs: pd.DataFrame, games: pd.DataFrame, dates: list[str], n_si
                                         "b_crps": crps_samples(b, y), "line": line, "over": float(y > line),
                                         "p_over": float(np.mean(x > line)),
                                         "b_p_over": float(((b > line).sum() + 1) / (len(b) + 2))})
-                            for o in LINE_OFFSETS[mk]:
+                            for o in LINE_OFFSETS.get(mk, ()):
                                 ln = line + o
                                 if ln > 0:
                                     rec[f"p_over_{o:+d}"] = float(np.mean(x > ln))

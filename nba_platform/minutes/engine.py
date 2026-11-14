@@ -76,12 +76,25 @@ class MinutesConfig:
                                           #   drawn pregame from G | simulated |margin| (training games only)
     dnp_garbage: bool = False             # bench P(DNP) also depends on garbage time (fringe players enter blowouts)
     noise_model: str = "normal"           # "normal" | "empirical": standardized residuals observed in training
+    # ---- V10 challengers (all off = champion 1.2.0) ----
+    start_mix: bool = False               # MIN_V2_ROLE: unconfirmed lineups -> starting status drawn per simulation
+    start_mix_power: float = 2.0          #   Plackett-Luce weights = start_score ** power (Gumbel top-5)
+    proj_weight: str = "var"              # MIN_V2_JOINT: "var" (champion) | "var_role": residual minutes follow
+                                          #   variance x expected role (rotation absorbs, deep bench does not)
+    return_model: str = "ramp"            # MIN_V2_RETURN: "ramp" (champion) | "role_decay": ratio learned by
+                                          #   games missed (3-5, 6-14, 15+) and prior role, own history only
                                           #   (keeps the real skew/left tail: foul trouble, in-game injury, benching)
     position_similarity: tuple = (("G", "G", 1.0), ("F", "F", 1.0), ("C", "C", 1.0),
                                   ("G", "F", 0.5), ("F", "C", 0.5), ("G", "C", 0.15))
 
+    _V10_DEFAULTS = {"start_mix": False, "start_mix_power": 2.0, "proj_weight": "var", "return_model": "ramp"}
+
     def digest(self) -> str:
-        return sha(asdict(self))
+        d = asdict(self)
+        for k, v in self._V10_DEFAULTS.items():      # champion fingerprint stays byte-identical
+            if d.get(k) == v:
+                d.pop(k, None)
+        return sha(d)
 
 
 def _season(d: str) -> str:
@@ -107,6 +120,7 @@ class PlayerParams:
     c: float = 0.0           # d minutes / d (centred closeness)
     p_dnp: float = 0.0
     flags: list[str] = field(default_factory=list)
+    proj_scale: float = 1.0  # V10 MIN_V2_RETURN: projection weight scale (uncertainty widening does not absorb cuts)
 
 
 @dataclass
@@ -520,6 +534,7 @@ class MinutesEngine:
             flags.append("NEW_TEAM")
 
         # return from injury
+        ret_proj = 1.0
         streak = self._inactive_streak(pid, team_id)
         if streak >= cfg.return_streak_min:
             bucket = "LONG" if streak >= 10 else "SHORT"
@@ -527,6 +542,8 @@ class MinutesEngine:
             a_coef *= ramp
             sigma *= infl
             flags.append(f"RETURN_FROM_INJURY:{streak}g" + ("" if calibrated else ":UNCALIBRATED"))
+            if cfg.return_model == "role_decay":
+                ret_proj = 1.0 / infl
 
         # DNP probability (bench only)
         if started:
@@ -561,7 +578,8 @@ class MinutesEngine:
         a_coef = max(0.0, a_coef)
         if cap is not None:
             flags.append(f"MINUTES_CAP:{cap:g}")
-        return PlayerParams(pid, started, a_coef, b_coef, max(sigma, 0.5), c_coef, min(max(p_dnp, 0.0), 0.99), flags)
+        return PlayerParams(pid, started, a_coef, b_coef, max(sigma, 0.5), c_coef, min(max(p_dnp, 0.0), 0.99), flags,
+                            ret_proj)
 
     def _fit_noise_pools(self) -> None:
         """Standardized within-player residual pools (starters / bench) from training games only."""
@@ -692,7 +710,7 @@ class MinutesEngine:
 
     def simulate_team(self, team_id: int, available: list[str], starters: list[str],
                       caps: dict[str, float], bx: np.ndarray, n_ot: np.ndarray, seed: int,
-                      margin: np.ndarray | None = None) -> TeamMinutes:
+                      margin: np.ndarray | None = None, starters_confirmed: bool = False) -> TeamMinutes:
         n = len(bx)
         players = list(available)
         params = {p: self.player_params(p, team_id, available, p in starters, caps.get(p)) for p in players}
@@ -701,6 +719,25 @@ class MinutesEngine:
         B = np.array([params[p].b for p in players])
         SD = np.array([params[p].sigma for p in players])
         PD = np.array([params[p].p_dnp for p in players])
+        smask = None
+        if self.cfg.start_mix and not starters_confirmed and len(players) > 5:
+            # MIN_V2_ROLE: the starting five is uncertain until confirmed. Draw it per simulation
+            # (Plackett-Luce via Gumbel top-5 on start propensities) and use the matching start/bench
+            # parameters, instead of a single deterministic expected lineup.
+            sc = self.start_scores(team_id, players)
+            w = np.array([max(sc.get(p, 0.0), 1e-3) for p in players]) ** self.cfg.start_mix_power
+            rs = np.random.default_rng([seed, team_id % 100_000, 7])
+            g = np.log(w)[None, :] + rs.gumbel(size=(n, len(players)))
+            top = np.argpartition(-g, 4, axis=1)[:, :5]
+            smask = np.zeros((n, len(players)), dtype=bool)
+            np.put_along_axis(smask, top, True, axis=1)
+            alt = {p: self.player_params(p, team_id, available, p not in starters, caps.get(p)) for p in players}
+            ps = {p: (params[p] if p in starters else alt[p]) for p in players}
+            pb = {p: (alt[p] if p in starters else params[p]) for p in players}
+            A = np.where(smask, np.array([ps[p].a for p in players]), np.array([pb[p].a for p in players]))
+            B = np.where(smask, np.array([ps[p].b for p in players]), np.array([pb[p].b for p in players]))
+            SD = np.where(smask, np.array([ps[p].sigma for p in players]), np.array([pb[p].sigma for p in players]))
+            PD = np.where(smask, 0.0, np.array([pb[p].p_dnp for p in players]))
         total = 240.0 + 25.0 * n_ot
         per_cap = 48.0 + 5.0 * n_ot
         cap = np.minimum(per_cap[:, None], np.array([caps.get(p, np.inf) for p in players])[None, :])
@@ -710,9 +747,11 @@ class MinutesEngine:
                           np.maximum(0.0, self.cfg.close_threshold - np.abs(margin))) - self.cx_mean
         else:
             cx = np.zeros(n)
-        reg = A[None, :] + B[None, :] * bx[:, None] + Cc[None, :] * cx[:, None]
+        A2 = A if A.ndim == 2 else A[None, :]
+        B2 = B if B.ndim == 2 else B[None, :]
+        reg = A2 + B2 * bx[:, None] + Cc[None, :] * cx[:, None]
         if self.cfg.ot_gamma > 0:
-            share = np.power(np.clip(A, 0, None) / 48.0, self.cfg.ot_gamma)
+            share = np.power(np.clip(A2.mean(0), 0, None) / 48.0, self.cfg.ot_gamma)
             share = share / share.sum() if share.sum() > 0 else np.full(len(A), 1 / len(A))
             raw = reg + (25.0 * n_ot)[:, None] * share[None, :]
         else:
@@ -724,16 +763,23 @@ class MinutesEngine:
                 Z[:, k_] = pool[rng.integers(0, len(pool), n)]
         else:
             Z = rng.standard_normal((n, len(players)))
-        raw = raw + SD[None, :] * Z
+        SD2 = SD if SD.ndim == 2 else SD[None, :]
+        raw = raw + SD2 * Z
         if self.cfg.dnp_garbage and self.dnp_garbage_coef != 0.0:
             gdraw = self.garbage_for_dnp(margin, n_ot, bx, seed)
-            lp = np.log(np.clip(PD, 1e-6, 1 - 1e-6) / (1 - np.clip(PD, 1e-6, 1 - 1e-6)))
-            PDn = 1 / (1 + np.exp(-(lp[None, :] + self.dnp_garbage_coef * gdraw[:, None])))
-            PDn = np.where(PD[None, :] > 0, PDn, 0.0)          # starters keep P(DNP)=0
+            PD2 = PD if PD.ndim == 2 else PD[None, :]
+            lp = np.log(np.clip(PD2, 1e-6, 1 - 1e-6) / (1 - np.clip(PD2, 1e-6, 1 - 1e-6)))
+            PDn = 1 / (1 + np.exp(-(lp + self.dnp_garbage_coef * gdraw[:, None])))
+            PDn = np.where(PD2 > 0, PDn, 0.0)          # starters keep P(DNP)=0
             plays = rng.random((n, len(players))) >= PDn
         else:
-            plays = rng.random((n, len(players))) >= PD[None, :]
-        x = project_minutes(raw, plays, cap, total, SD ** 2, self.cfg.played_floor)
+            plays = rng.random((n, len(players))) >= (PD if PD.ndim == 2 else PD[None, :])
+        var = SD2 ** 2 * (np.array([params[p].proj_scale for p in players]) ** 2)[None, :]
+        if self.cfg.proj_weight == "var_role":
+            # MIN_V2_JOINT: residual minutes (budget = 240 + OT) are absorbed in proportion to
+            # variance x expected regulation role, so deep-bench noise does not soak up rotation minutes
+            var = var * np.clip(A2, 1.0, None) / 24.0
+        x = project_minutes(raw, plays, cap, total, var, self.cfg.played_floor)
         return TeamMinutes(team_id, players, list(starters), x, total, params)
 
     def fingerprint(self) -> str:

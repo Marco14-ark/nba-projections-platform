@@ -369,6 +369,9 @@ if os.path.exists(V9R):
     results["historical"]["v9_research"] = {k: v9[k] for k in ("minutes_audit", "props_error_decomposition", "totals_decomposition",
                                                                "game_challengers", "injury_context", "team_totals", "correlations",
                                                                "minutes_challenger_profile_recal") if k in v9}
+V10R = os.path.join(ROOT, "docs", "validation", "v10_report.json")
+if os.path.exists(V10R):
+    results["historical"]["v10"] = json.load(open(V10R))
 GR = os.path.join(D, "odds", "market_gate_report.json")
 results["market_gate"] = json.load(open(GR)) if os.path.exists(GR) else None
 json.dump(results, open(os.path.join(OUT, "results.json"), "w"), separators=(",", ":"), default=str)

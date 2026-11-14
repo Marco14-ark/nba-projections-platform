@@ -81,11 +81,12 @@ class Autopilot:
                  play_rates_fn: Callable[[str], dict] | None = None, with_sim: bool = False,
                  sim_n: int = 10_000, anchor_margin_fn: Callable | None = None,
                  context_extra_fn: Callable | None = None, stack_name: str = "STACK_V2_ENV",
-                 game_features: "pd.DataFrame | None" = None, rates_cfg=None):
+                 game_features: "pd.DataFrame | None" = None, rates_cfg=None, joint_cfg=None):
         self.s, self.cfg, self.n_sims = store, cfg or MinutesConfig(), n_sims
         self._engines: dict[str, MinutesEngine] = {}
         self._rates: dict[str, OpportunityRates] = {}
         self.rates_cfg = rates_cfg               # None -> RatesConfig() (champion)
+        self.joint_cfg = joint_cfg               # None -> JointConfig() (champion)
         self.with_sim, self.sim_n = with_sim, sim_n
         # anchor_margin_fn(game_row, home_inputs, away_inputs) -> expected home margin from
         # NBA_TEAM_RATING_V2 (0.295*point-diff + 0.845*lineup RAPM). None -> point-diff rating.
@@ -125,7 +126,7 @@ class Autopilot:
         all-available pair is stored (CONDITIONAL, settled only if that condition happens)."""
         from ..sim.mixture import mix_game_sims
         from . import publication as pubm
-        sim = GameSimulator(eng, self.rates_for(g["game_date_et"]))
+        sim = GameSimulator(eng, self.rates_for(g["game_date_et"]), self.joint_cfg)
         hs = build_scenarios(home, eng.rot_players.get(home.team_id, {}), play_rates)
         as_ = build_scenarios(away, eng.rot_players.get(away.team_id, {}), play_rates)
         pairs = [(i, j) for i in range(len(hs)) for j in range(len(as_))]
@@ -141,7 +142,8 @@ class Autopilot:
             for ctx, sc in ((home, hs[i]), (away, as_[j])):
                 av = ctx.available(sc)
                 ti.append(TeamInput(ctx.team_id, av, expected_starters(av, eng.start_scores(ctx.team_id, av),
-                                                                        ctx.confirmed_starters), ctx.minutes_caps))
+                                                                        ctx.confirmed_starters), ctx.minutes_caps,
+                                     bool(ctx.confirmed_starters) and len(ctx.confirmed_starters) == 5))
             am = self.anchor_margin_fn(g, ti[0], ti[1]) if self.anchor_margin_fn else None
             gs = sim.simulate(ti[0], ti[1], n=self.sim_n, seed=seed, anchor_margin=am)
             if not all(accounting_check(gs).values()):

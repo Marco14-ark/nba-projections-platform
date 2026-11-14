@@ -7,3 +7,4 @@ _site/
 *.db
 *.pkl
 captures/
+docs/validation/v10/*.pkl

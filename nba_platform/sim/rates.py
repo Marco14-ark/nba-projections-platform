@@ -56,11 +56,16 @@ class RatesConfig:
     # V9 challenger: "league" = champion (lg * h/lg * a/lg * env_pace); "team_mean" = h * a / mean(team
     # factors), no env_pace (team factors already carry the current season through recency weights).
     pace_norm: str = "league"
+    # V10 SHOT_V2_USAGE: separate (shorter) recency half-life for usage and its FGA/TOV/FT-trip split;
+    # 0 = champion (same half-life as every other rate)
+    hl_use_games: float = 0.0
 
     def digest(self) -> str:
         d = asdict(self)
         if d["pace_norm"] == "league":          # keep the champion fingerprint byte-identical
             del d["pace_norm"]
+        if d["hl_use_games"] == 0.0:
+            del d["hl_use_games"]
         return sha(d)
 
 
@@ -94,6 +99,9 @@ class OpportunityRates:
         w = np.power(0.5, age / self.cfg.hl_player_games)
         old = np.array([_season_start(d) != season for d in p["game_date_et"]])
         p["w"] = np.where(old, w * self.cfg.prior_season_weight, w)
+        if self.cfg.hl_use_games > 0:
+            wu = np.power(0.5, age / self.cfg.hl_use_games)
+            p["w_use"] = np.where(old, wu * self.cfg.prior_season_weight, wu)
         self._fit_league(p)
         self._fit_players(p)
         self._fit_teams(p, games, season)
@@ -136,6 +144,15 @@ class OpportunityRates:
         out["pctmid"] = _eb(S["mid_fgm"], S["mid_fga"], L["pctmid"], c.k_midpct)
         out["pctft"] = _eb(S["ftm"], S["fta"], L["pctft"], c.k_ftpct)
         out["fta_trip"] = _eb(S["fta"], S["ft_trips"], L["fta_trip"], 30.0)
+        if c.hl_use_games > 0 and "w_use" in p:
+            U = p[["uses", "fga", "tov", "ft_trips", "team_poss_on"]].multiply(p["w_use"], axis=0)
+            U["player_id"] = p["player_id"].to_numpy()
+            U = U.groupby("player_id").sum().reindex(S.index)
+            uu = U["uses"].clip(lower=0)
+            out["use"] = _eb(uu, U["team_poss_on"], L["use"], c.k_use)
+            out["f_fga"] = (U["fga"] + c.k_split * L["f_fga"]) / (uu + c.k_split)
+            out["f_tov"] = (U["tov"] + c.k_split * L["f_tov"]) / (uu + c.k_split)
+            out["f_trip"] = (U["ft_trips"] + c.k_split * L["f_trip"]) / (uu + c.k_split)
         out["oreb"] = _eb(S["oreb"], S["team_miss_on"], L["oreb"], c.k_reb)
         out["dreb"] = _eb(S["dreb"], S["opp_miss_on"], L["dreb"], c.k_reb)
         out["ast"] = _eb(S["ast"], S["tm_fgm_ex"], L["ast"], c.k_ast)

@@ -25,13 +25,14 @@ from nba_platform.sources.injury_report import parse_pdf
 
 import os
 from nba_platform.sim.rates import RatesConfig
+from nba_platform.sim.game_sim import JointConfig
 D = os.environ.get("NBA_DATA_DIR", "/home/claude/data")
 ap = argparse.ArgumentParser()
 ap.add_argument("bundle"); ap.add_argument("db"); ap.add_argument("--now"); ap.add_argument("--replay", action="store_true")
 ap.add_argument("--dates", nargs="*"); ap.add_argument("--sims", type=int, default=10_000)
 ap.add_argument("--horizon-days", type=int, default=3)
 ap.add_argument("--stack", default="STACK_V2_ENV"); ap.add_argument("--minutes-cfg", default="{}")
-ap.add_argument("--rates-cfg", default="{}")
+ap.add_argument("--rates-cfg", default="{}"); ap.add_argument("--joint-cfg", default="{}")
 a = ap.parse_args()
 now = parse_utc(a.now) if a.now else utcnow()
 B = json.load(open(a.bundle))
@@ -193,6 +194,7 @@ pilot = Autopilot(s, cfg=MinutesConfig(**json.loads(a.minutes_cfg)), n_sims=a.si
                   context_extra_fn=lambda g: {"sources": inj, "mode": ("REPLAY" if a.replay else "PROSPECTIVE") + ("" if a.stack == "STACK_V2_ENV" else "_SHADOW"), "calibration": json.load(open(os.path.join(os.environ.get("NBA_CODE_DIR", "/home/claude/nba-platform"), "models/calibration_beta_mkt.json")))["version"]},
                   stack_name=a.stack,
                   rates_cfg=(RatesConfig(**json.loads(a.rates_cfg)) if json.loads(a.rates_cfg) else None),
+                  joint_cfg=(JointConfig(**json.loads(a.joint_cfg)) if json.loads(a.joint_cfg) else None),
                   game_features=(pd.read_pickle(f"{D}/garbage_by_game.pkl")[["game_id", "garbage_min"]]
                                  if json.loads(a.minutes_cfg).get("blowout_feature") == "garbage"
                                  or json.loads(a.minutes_cfg).get("dnp_garbage") else None))

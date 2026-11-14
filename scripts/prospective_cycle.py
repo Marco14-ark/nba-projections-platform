@@ -45,8 +45,10 @@ py = sys.executable
 dbs = {"PROSPECTIVE": os.path.join(D, "live", "prospective.db")}
 SHADOWS = {"STACK_V3_SIGMA": {"sigma_dof_correct": True, "sigma_dof_scope": "starters"},
            "STACK_V4_BLOWOUT": {"blowout_feature": "garbage", "dnp_garbage": True},
-           "STACK_V5_PACE": {}}
+           "STACK_V5_PACE": {},
+           "STACK_V6_MINROLE": {"start_mix": True}}          # V10 MIN_V2_ROLE: starting five drawn per simulation until confirmed
 SHADOW_RATES = {"STACK_V5_PACE": {"pace_norm": "team_mean"}}     # V9: pace without double-counted environment
+SHADOW_JOINT = {}
 if "--no-shadow" not in sys.argv:
     for name in SHADOWS:
         dbs["SHADOW:" + name] = os.path.join(D, "live", f"shadow_{name}.db")
@@ -66,7 +68,8 @@ if "--no-forecast" not in sys.argv:
         if cat.startswith("SHADOW:"):
             name = cat.split(":", 1)[1]
             runs[cat] = [bp, db, "--stack", name, "--minutes-cfg", json.dumps(SHADOWS[name]),
-                         "--rates-cfg", json.dumps(SHADOW_RATES.get(name, {}))]
+                         "--rates-cfg", json.dumps(SHADOW_RATES.get(name, {})),
+                         "--joint-cfg", json.dumps(SHADOW_JOINT.get(name, {}))]
     log["forecast"] = {}
     for cat, args in runs.items():
         r = subprocess.run([py, os.path.join(ROOT, "scripts/live_forecast.py"), *args], capture_output=True, text=True)

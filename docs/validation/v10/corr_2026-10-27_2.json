@@ -1,0 +1,103 @@
+{
+ "n_games": 56,
+ "real_residual_corr": {
+  "tm_pts": {
+   "r": -0.045,
+   "n": 1645
+  },
+  "tm_reb": {
+   "r": 0.026,
+   "n": 1645
+  },
+  "ast_tm_pts": {
+   "r": 0.052,
+   "n": 3290
+  },
+  "pts_ast": {
+   "r": 0.107,
+   "n": 657
+  },
+  "pts_reb": {
+   "r": 0.184,
+   "n": 657
+  },
+  "fga_pts": {
+   "r": 0.739,
+   "n": 657
+  },
+  "fg3a_fg3m": {
+   "r": 0.68,
+   "n": 657
+  },
+  "tm_min": {
+   "r": 0.092,
+   "n": 1684
+  },
+  "min_absmargin_starters": {
+   "r": -0.346,
+   "n": 406
+  },
+  "home_away_pts": {
+   "r": 0.07,
+   "n": 56
+  },
+  "poss_team_fga": {
+   "r": 0.299,
+   "n": 112
+  }
+ },
+ "sim_corr": {
+  "CHAMPION": {
+   "tm_pts": -0.064,
+   "tm_reb": -0.017,
+   "ast_tm_pts": 0.034,
+   "pts_ast": 0.175,
+   "pts_reb": 0.161,
+   "fga_pts": 0.69,
+   "fg3a_fg3m": 0.616,
+   "tm_min": 0.003,
+   "min_absmargin_starters": -0.066,
+   "home_away_pts": 0.19,
+   "poss_team_fga": 0.654
+  },
+  "JOINT_MC_V2": {
+   "tm_pts": -0.071,
+   "tm_reb": -0.019,
+   "ast_tm_pts": 0.04,
+   "pts_ast": 0.118,
+   "pts_reb": 0.216,
+   "fga_pts": 0.718,
+   "fg3a_fg3m": 0.627,
+   "tm_min": 0.003,
+   "min_absmargin_starters": -0.057,
+   "home_away_pts": 0.189,
+   "poss_team_fga": 0.546
+  },
+  "JOINT_MC_V2_TEAM": {
+   "tm_pts": -0.064,
+   "tm_reb": -0.011,
+   "ast_tm_pts": 0.034,
+   "pts_ast": 0.175,
+   "pts_reb": 0.162,
+   "fga_pts": 0.692,
+   "fg3a_fg3m": 0.616,
+   "tm_min": 0.003,
+   "min_absmargin_starters": -0.056,
+   "home_away_pts": 0.187,
+   "poss_team_fga": 0.546
+  },
+  "MIN_V2_ROLE": {
+   "tm_pts": -0.071,
+   "tm_reb": -0.025,
+   "ast_tm_pts": 0.019,
+   "pts_ast": 0.236,
+   "pts_reb": 0.231,
+   "fga_pts": 0.725,
+   "fg3a_fg3m": 0.631,
+   "tm_min": -0.051,
+   "min_absmargin_starters": -0.046,
+   "home_away_pts": 0.19,
+   "poss_team_fga": 0.654
+  }
+ }
+}

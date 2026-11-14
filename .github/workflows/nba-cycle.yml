@@ -27,6 +27,7 @@ jobs:
       - run: pip install -r requirements-ci.txt
       - name: Restore state databases (gzip chunks -> SQLite) and record row-count baseline
         run: |
+          echo "RUN_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%S)" >> "$GITHUB_ENV"
           python scripts/ci/state_tool.py restore state/data
           python scripts/ci/state_tool.py baseline state/data "$RUNNER_TEMP/baseline.json"
       - name: Probe NBA sources

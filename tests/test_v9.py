@@ -89,7 +89,7 @@ def test_unknown_player_has_no_role_and_is_low():
 
 def test_champion_rates_fingerprint_unchanged_and_challenger_differs():
     d = asdict(RatesConfig())
-    d.pop("pace_norm")
+    d.pop("pace_norm"); d.pop("hl_use_games")
     assert RatesConfig().digest() == sha(d)
     assert RatesConfig(pace_norm="team_mean").digest() != RatesConfig().digest()
 
