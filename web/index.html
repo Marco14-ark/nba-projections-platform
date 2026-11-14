@@ -645,7 +645,8 @@ function viewResults() {
       <div class="inj">${Object.entries(S.sys.sources || {}).map(([k, v]) => `<span class="tag ${v.ok ? "final" : "out"}">${esc(k)} · HTTP ${esc(v.http)}</span>`).join("")}</div>
       <div class="small">Pasos: ${Object.entries(S.sys.steps || {}).map(([k, v]) => `${esc(k)} <b style="color:${v === "success" ? "var(--good)" : v === "skipped" ? "var(--muted)" : "var(--bad)"}">${esc(v)}</b>`).join(" · ")}</div>
       <div class="small">Snapshots congelados en esta ejecución: <b>${S.sys.snapshots_frozen_this_run}</b> · Partidos liquidados: <b>${S.sys.games_settled_this_run}</b></div>
-      ${S.sys.errors?.length ? `<div class="small warnline">${S.sys.errors.map(esc).join(" · ")}</div>` : ""}</div>` : ""}
+      ${S.sys.errors?.length ? `<div class="small" style="color:var(--bad)">${S.sys.errors.map(esc).join(" · ")}</div>` : ""}
+      ${S.sys.warnings?.length ? `<div class="small warnline">${S.sys.warnings.map(esc).join(" · ")} (no afecta las proyecciones)</div>` : ""}</div>` : ""}
     <h3>Prospectivo · ${esc(H.champion)} (Champion)</h3>
     <div class="table-wrap"><table><thead><tr><th>Partido</th><th class="n">Final</th><th class="n">Margen proy. (P10–P90)</th><th class="n">Margen real</th><th class="n">Total proy. (P10–P90)</th><th class="n">Total real</th><th class="n">P(local gana)</th><th>Ganador</th></tr></thead><tbody>${gr || `<tr><td colspan="8" class="muted">Aún no hay partidos liquidados.</td></tr>`}</tbody></table></div>
     ${P.games ? mktTable(P.by_market) : ""}

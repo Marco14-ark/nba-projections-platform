@@ -20,14 +20,16 @@ if os.path.exists(cycle_log):
         settled += len(re.findall(r'"status": "SETTLED"', v))
         if v.startswith("FAILED"):
             errors.append(f"settlement {cat} failed")
+OPTIONAL = ("team roster (stats.nba.com)",)   # enhancement only: names/current team also come from boxscores
 bad_sources = [k for k, v in probe.items() if isinstance(v, dict) and v.get("http") != 200]
-errors += [f"source unavailable: {k}" for k in bad_sources]
+errors += [f"source unavailable: {k}" for k in bad_sources if k not in OPTIONAL]
+warnings = [f"optional source unavailable: {k}" for k in bad_sources if k in OPTIONAL]
 errors += [f"step failed: {k}" for k, v in steps.items() if v not in ("success", "skipped")]
 status = {"run_finished_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
           "run_url": f"{os.environ.get('GITHUB_SERVER_URL','')}/{os.environ.get('GITHUB_REPOSITORY','')}/actions/runs/{os.environ.get('GITHUB_RUN_ID','')}",
           "runner": "GitHub Actions (ubuntu-latest)", "steps": steps,
           "sources": {k: {"ok": v.get("http") == 200, "http": v.get("http")} for k, v in probe.items() if isinstance(v, dict)},
           "archive": cyc.get("archive"), "snapshots_frozen_this_run": frozen, "games_settled_this_run": settled,
-          "ok": not errors, "errors": errors}
+          "ok": not errors, "errors": errors, "warnings": warnings}
 json.dump(status, open(out, "w"), indent=1)
 print(json.dumps(status, indent=1))
