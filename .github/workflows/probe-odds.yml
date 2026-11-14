@@ -1,0 +1,17 @@
+name: probe-odds
+on: { workflow_dispatch: {} }
+permissions: { contents: read }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe free, keyless odds endpoints (raw responses kept only as a run artifact)
+        run: |
+          mkdir out
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+          for u in "https://cdn.nba.com/static/json/liveData/odds/odds_todaysGames.json" ; do
+            f=out/$(echo "$u" | md5sum | cut -c1-8).json
+            code=$(curl -s -m 25 -A "$UA" -H "Origin: https://www.nba.com" -H "Referer: https://www.nba.com/" -o "$f" -w "%{http_code}" "$u"); echo "$code $u $(wc -c < $f)"
+          done
+      - uses: actions/upload-artifact@v4
+        with: { name: odds-probe, path: out, retention-days: 3 }
