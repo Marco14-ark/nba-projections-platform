@@ -1,0 +1,12 @@
+{
+ "season": "2024-25",
+ "n_player_games": 20700,
+ "cross_moments": {
+  "use_reb": 0.021201360044760996,
+  "use_ast": 0.0023734252176127457,
+  "reb_ast": 0.02464090257473851
+ },
+ "form_sd": 0.1268,
+ "team_use_sd": 0.0403,
+ "n_team_games": 2460
+}

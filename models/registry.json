@@ -1,0 +1,828 @@
+{
+ "NBA_MINUTES_ENGINE_V1": [
+  {
+   "version": "1.0.0",
+   "role": "RETIRED",
+   "config": {
+    "struct_weighting": "room",
+    "absent_scope": "all",
+    "dnp_context_buckets": true
+   },
+   "real_2025_26_expected_starters": {
+    "n": 31030,
+    "mae": 5.127,
+    "crps": 3.295,
+    "cov80": 0.846
+   }
+  },
+  {
+   "version": "1.1.0",
+   "role": "RETIRED",
+   "promoted": "2026-11-13",
+   "hypothesis": "Structural absorption prior gave deep-bench players most of an absent player's minutes and counted long-gone players as absent; P(DNP) for end-of-bench was underestimated.",
+   "config": {
+    "struct_weighting": "minutes_room",
+    "absent_scope": "recent",
+    "dnp_context_buckets": false
+   },
+   "real_2025_26_expected_starters": {
+    "n": 31030,
+    "mae": 4.684,
+    "crps": 3.187,
+    "cov80": 0.826
+   },
+   "vs_1_0_0": {
+    "mae_diff": -0.443,
+    "mae_ci95": [
+     -0.468,
+     -0.417
+    ],
+    "crps_diff": -0.108,
+    "crps_ci95": [
+     -0.125,
+     -0.091
+    ]
+   },
+   "vs_baseline_last10_available": {
+    "mae_diff": 0.044,
+    "mae_ci95": [
+     -0.002,
+     0.085
+    ],
+    "crps_diff": -0.22,
+    "crps_ci95": [
+     -0.252,
+     -0.19
+    ]
+   }
+  },
+  {
+   "version": "CHALLENGER_A",
+   "role": "REJECTED",
+   "config": {
+    "struct_weighting": "minutes_room",
+    "absent_scope": "recent",
+    "dnp_context_buckets": true
+   },
+   "real_2025_26_expected_starters": {
+    "mae": 4.866,
+    "crps": 3.257
+   }
+  },
+  {
+   "version": "1.2.0",
+   "role": "CHAMPION",
+   "promoted": "2026-11-13",
+   "config_change": {
+    "dnp_model": "competition"
+   },
+   "hypothesis": "Competition for minutes: P(DNP) of bench players depends on own recent DNP rate AND how many available teammates sit above them in the rotation (pooled logistic).",
+   "data": "leak-free v2 (rosters known only from past games), EXPECTED starters",
+   "selection_dates_2025_26_even": {
+    "n": 15873,
+    "mae": 4.321,
+    "crps": 2.966,
+    "cov80": 0.812,
+    "vs_1_1_0": {
+     "mae_diff": -0.2475,
+     "mae_ci95": [
+      -0.2636,
+      -0.2314
+     ],
+     "crps_diff": -0.1012,
+     "crps_ci95": [
+      -0.1113,
+      -0.0913
+     ]
+    }
+   },
+   "confirmation_dates_2025_26_odd": {
+    "n": 16645,
+    "mae": 4.365,
+    "crps": 2.996,
+    "cov80": 0.806,
+    "vs_1_1_0": {
+     "mae_diff": -0.2387,
+     "mae_ci95": [
+      -0.2529,
+      -0.2245
+     ],
+     "crps_diff": -0.0915,
+     "crps_ci95": [
+      -0.1003,
+      -0.0823
+     ]
+    }
+   },
+   "vs_baseline_last10_available_even": {
+    "mae": [
+     4.321,
+     4.523
+    ],
+    "crps": [
+     2.966,
+     3.315
+    ]
+   }
+  },
+  {
+   "version": "M_OT",
+   "role": "REJECTED",
+   "config": {
+    "ot_gamma": 5.0,
+    "ot_regulation_training": true
+   },
+   "result": {
+    "mae_diff": 0.0027,
+    "mae_ci95": [
+     -0.0002,
+     0.0057
+    ],
+    "crps_diff": 0.0
+   },
+   "note": "OT allocation exponent 5 fitted on 2024-25 stints; no pregame gain (OT is ~4% of games, unknowable pregame)"
+  },
+  {
+   "version": "M_CLOSE",
+   "role": "REJECTED",
+   "config": {
+    "close_feature": true,
+    "prior_k_blowout": 5.0
+   },
+   "result": {
+    "mae_diff": 0.045,
+    "mae_ci95": [
+     0.0358,
+     0.0542
+    ],
+    "crps_diff": 0.0235,
+    "crps_ci95": [
+     0.0178,
+     0.0292
+    ]
+   }
+  },
+  {
+   "version": "M_SIGMA",
+   "role": "REJECTED",
+   "config": {
+    "sigma_dof_correct": true
+   },
+   "result": {
+    "mae_diff": 0.0069,
+    "crps_diff": 0.0015,
+    "crps_ci95": [
+     -0.0002,
+     0.0032
+    ],
+    "starter_cov80": [
+     0.762,
+     0.786
+    ],
+    "all_cov80": [
+     0.837,
+     0.852
+    ]
+   },
+   "note": "fixes starter coverage but over-covers overall; candidate for a starters-only variant"
+  },
+  {
+   "version": "M_HL8",
+   "role": "REJECTED",
+   "config": {
+    "half_life_games": 8.0
+   },
+   "result": {
+    "mae_diff": 0.0082,
+    "mae_ci95": [
+     -0.0149,
+     0.0329
+    ],
+    "crps_diff": -0.0063,
+    "crps_ci95": [
+     -0.0225,
+     0.0102
+    ]
+   },
+   "note": "inconclusive"
+  },
+  {
+   "version": "M_HL18",
+   "role": "REJECTED",
+   "config": {
+    "half_life_games": 18.0
+   },
+   "result": {
+    "mae_diff": 0.0485,
+    "crps_diff": 0.044
+   }
+  },
+  {
+   "version": "1.3.0-rc (M3_SIGMA_ST)",
+   "role": "SHADOW",
+   "since": "2026-11-13",
+   "config": {
+    "sigma_dof_correct": true,
+    "sigma_dof_scope": "starters"
+   },
+   "hypothesis": "Starter residual SD is underestimated because the ridge fit consumes degrees of freedom; correct by 1/(1-p_eff/n_eff), no fixed inflation.",
+   "held_out_odd_dates_2025_26": {
+    "n": 16645,
+    "champion": {
+     "mae": 4.365,
+     "crps": 2.996,
+     "cov80": 0.806,
+     "cov80_starters": 0.745
+    },
+    "challenger": {
+     "mae": 4.359,
+     "crps": 2.986,
+     "cov80": 0.816,
+     "cov80_starters": 0.767
+    },
+    "mae_diff": -0.0054,
+    "mae_ci95": [
+     -0.0082,
+     -0.0026
+    ],
+    "crps_diff": -0.0109,
+    "crps_ci95": [
+     -0.0129,
+     -0.0087
+    ]
+   },
+   "props_2026_27_vs_STACK_V2_ENV": {
+    "games": 121,
+    "rows_per_market": 2741,
+    "MIN_mae": "5.044->5.041 ns",
+    "PTS_mae_diff": 0.0055,
+    "PTS_ci95": [
+     0.0005,
+     0.0106
+    ],
+    "AST_mae_diff": 0.0016,
+    "AST_ci95": [
+     0.0001,
+     0.0031
+    ],
+    "PRA_brier_diff": -0.0006,
+    "PRA_ci95": [
+     -0.0011,
+     -0.0001
+    ],
+    "game_markets": "ns"
+   },
+   "decision": "NOT PROMOTED. Significant minutes-level gain, but end-to-end props mixed (PTS/AST MAE slightly worse, PRA Brier slightly better). Runs in shadow on the same prospective games (data/live/shadow_STACK_V3_SIGMA.db).",
+   "even_dates_2025_26": {
+    "n": 15873,
+    "challenger": {
+     "mae": 4.315,
+     "crps": 2.956,
+     "cov80": 0.822,
+     "cov80_starters": 0.777
+    }
+   }
+  },
+  {
+   "version": "M3_EMP",
+   "role": "REJECTED",
+   "config": {
+    "noise_model": "empirical"
+   },
+   "reason": "CRPS worse (2.970 vs 2.966) and starter coverage worse (0.745 vs 0.755); MAE gain negligible.",
+   "evidence_even_dates_2025_26": {
+    "n": 15873,
+    "champion": {
+     "mae": 4.321,
+     "crps": 2.966,
+     "cov80": 0.812,
+     "cov80_starters": 0.755
+    },
+    "challenger": {
+     "mae": 4.319,
+     "crps": 2.97,
+     "cov80": 0.808,
+     "cov80_starters": 0.745
+    }
+   }
+  },
+  {
+   "version": "1.3.0-rc BLOWOUT_GD",
+   "role": "SHADOW",
+   "since": "2026-11-14",
+   "config": {
+    "blowout_feature": "garbage",
+    "dnp_garbage": true
+   },
+   "hypothesis": "Minutes depend on garbage time (PBP: Q4 time with lead >= 25/20/15 at 12-9/9-6/<6 min), not linearly on final margin; coaches differ in how fast they pull starters; fringe players enter blowouts. Pregame: simulated margin -> G drawn from historical games with similar |margin| (training games only).",
+   "walk_forward": {
+    "2024-25 (263 games)": {
+     "dMAE": [
+      -0.0313,
+      [
+       -0.0425,
+       -0.0199
+      ]
+     ],
+     "dCRPS": [
+      -0.0111,
+      [
+       -0.0193,
+       -0.0027
+      ]
+     ]
+    },
+    "2025-26 (255 games)": {
+     "dMAE": [
+      -0.0194,
+      [
+       -0.0324,
+       -0.0069
+      ]
+     ],
+     "dCRPS": [
+      -0.0159,
+      [
+       -0.0238,
+       -0.0076
+      ]
+     ]
+    },
+    "2026-27 (121 games)": {
+     "dMAE": [
+      -0.0153,
+      [
+       -0.0409,
+       0.0106
+      ]
+     ],
+     "dCRPS": [
+      -0.0036,
+      [
+       -0.0216,
+       0.0133
+      ]
+     ]
+    },
+    "2025-26 held-out dates offset 2 (256 games)": {
+     "dMAE": [
+      -0.0066,
+      [
+       -0.0186,
+       0.0062
+      ]
+     ],
+     "dCRPS": [
+      -0.0034,
+      [
+       -0.0119,
+       0.0049
+      ]
+     ]
+    }
+   },
+   "components": {
+    "BLOWOUT_G only": "significant only 2025-26",
+    "BLOWOUT_BXD (DNP-garbage only)": "significant 2024-25 only"
+   },
+   "coach_effects": "starter slope per garbage minute: league -0.457 (shrunk team slopes from -0.69 SAS to -0.09 MEM); DNP logit -0.203 per garbage minute",
+   "props_vs_STACK_V2_ENV": {
+    "2025-26 (363 games)": {
+     "PTS_CRPS": [
+      -0.0052,
+      [
+       -0.0096,
+       -0.0008
+      ]
+     ],
+     "PRA_CRPS": [
+      -0.0071,
+      [
+       -0.0138,
+       0.0001
+      ]
+     ],
+     "REB_CRPS": [
+      0.0012,
+      [
+       -0.0006,
+       0.0031
+      ]
+     ],
+     "game_markets": "ns"
+    },
+    "2026-27 (121 games)": {
+     "REB_Brier": [
+      0.001,
+      [
+       0.0002,
+       0.0018
+      ]
+     ],
+     "others": "ns"
+    }
+   },
+   "decision": "NOT PROMOTED (shadow). Minutes gains significant in 2 of 4 out-of-sample cohorts, same direction but ns in the other 2; props mixed (PTS CRPS better 2025-26, REB Brier worse 2026-27). Runs prospectively in shadow_STACK_V4_BLOWOUT.db."
+  }
+ ],
+ "NBA_FULL_PLAYER_MONTE_CARLO_V1": [
+  {
+   "version": "1.0.0",
+   "anchor": "bottom_up",
+   "role": "RETIRED",
+   "real_2025_26": {
+    "games": 360,
+    "margin_mae": 11.512,
+    "crps_margin": 8.264,
+    "brier_home": 0.215
+   }
+  },
+  {
+   "version": "1.0.0",
+   "anchor": "rating",
+   "role": "CHAMPION",
+   "promoted": "2026-11-13",
+   "real_2025_26": {
+    "games": 360,
+    "margin_mae": 11.123,
+    "crps_margin": 8.082,
+    "brier_home": 0.21,
+    "total_mae": 14.972
+   }
+  },
+  {
+   "version": "V3-diagnostic",
+   "role": "DIAGNOSTIC",
+   "n_sims": 10000,
+   "games": 93,
+   "real_vs_sim": {
+    "corr_pts_reb": [
+     0.262,
+     0.131
+    ],
+    "corr_pts_ast": [
+     0.164,
+     0.15
+    ],
+    "corr_reb_ast": [
+     0.201,
+     0.096
+    ],
+    "corr_min_pts": [
+     0.525,
+     0.374
+    ],
+    "teammate_starters_pts": [
+     -0.004,
+     -0.07
+    ],
+    "p_ot": [
+     0.044,
+     0.038
+    ],
+    "p_abs_margin_ge20": [
+     0.228,
+     0.226
+    ],
+    "p_abs_margin_le5": [
+     0.245,
+     0.267
+    ]
+   },
+   "finding": "Game-level script (blowouts/OT/close) is right; within-player stat correlation too low and teammates too negative -> missing shared player 'game-form' factor. Affects PRA and same-game combos, not single props."
+  },
+  {
+   "version": "JOINT_MC_V2",
+   "role": "SHADOW/REJECTED",
+   "since": "2026-11-14",
+   "params_fitted_on": "2024-25 (form_sd 0.127, team_use_sd 0.040)",
+   "A_player_form": "PTS-REB/REB-AST correlations move toward reality, PTS-AST overshoots; REB Brier worse 2025-26 (+0.0024 sig), PRA Brier worse 2026-27 (+0.0015 sig) -> NOT PROMOTED (research)",
+   "B_team_dependencies": "PTS-AST correlation moves AWAY from reality (0.05 vs real 0.13-0.17); PRA CRPS worse 2026-27 -> REJECTED",
+   "C_combined": "mixed; PRA CRPS worse 2026-27 (+0.012 sig) -> NOT PROMOTED",
+   "teammates": "none fixes the teammate PTS correlation (sim -0.06/-0.07 vs real -0.003/-0.027); blowout minutes moves it to -0.048"
+  }
+ ],
+ "NBA_PROB_CALIBRATION_V1": [
+  {
+   "version": "1.0.0",
+   "role": "SHADOW",
+   "note": "out-of-sample Brier improved in PTS/REB/AST/3PM/PRA (fit before 2026-02-01, tested after); publish calibrated alongside raw"
+  }
+ ],
+ "NBA_TEAM_RATING_V2": [
+  {
+   "version": "V1_POINTDIFF",
+   "role": "RETIRED"
+  },
+  {
+   "version": "V2_RAPM_ONLY",
+   "role": "REJECTED",
+   "test_2025_26": {
+    "games": 1150,
+    "mae_diff": -0.0998,
+    "mae_ci95": [
+     -0.2961,
+     0.0997
+    ],
+    "brier_diff": -0.003,
+    "brier_ci95": [
+     -0.0078,
+     0.002
+    ]
+   }
+  },
+  {
+   "version": "V2_BLEND",
+   "role": "CHAMPION",
+   "promoted": "2026-11-13",
+   "formula": "0.295*pointdiff + 0.845*lineupRAPM(available players, ridge 1500, rest)",
+   "weights_and_ridge_fitted_on": "2024-25 only",
+   "test_2025_26": {
+    "games": 1150,
+    "mae": [
+     11.483,
+     11.292
+    ],
+    "mae_diff": -0.1912,
+    "mae_ci95": [
+     -0.3578,
+     -0.0235
+    ],
+    "brier": [
+     0.2076,
+     0.2024
+    ],
+    "brier_diff": -0.0052,
+    "brier_ci95": [
+     -0.0091,
+     -0.0014
+    ]
+   },
+   "measured_effects": {
+    "back_to_back_margin_pts": -2.35,
+    "home_offense_per100": 1.07
+   }
+  }
+ ],
+ "NBA_OPPORTUNITY_RATES_V1": [
+  {
+   "version": "HL20",
+   "role": "RETIRED"
+  },
+  {
+   "version": "HL45",
+   "role": "CHAMPION",
+   "promoted": "2026-11-13",
+   "config": {
+    "hl_player_games": 45.0
+   },
+   "tuned_on": "2024-25 (oracle minutes)",
+   "test_2025_26_oracle_minutes": {
+    "rows": 24998,
+    "fg3a_diff": -0.0163,
+    "fta_diff": -0.004,
+    "oreb_diff": -0.0055,
+    "dreb_diff": -0.0081,
+    "ast_diff": -0.0083,
+    "fga_diff": -0.0001,
+    "all_ci_below_0_except": [
+     "fga",
+     "tov"
+    ]
+   }
+  },
+  {
+   "version": "ALPHA125/ALPHA15/LINEUPK/HL10",
+   "role": "REJECTED",
+   "note": "usage redistribution concentrated on high-usage players (alpha 1.5) was worse: redistribution is ~proportional to usage"
+  }
+ ],
+ "STACK": [
+  {
+   "version": "STACK_V1",
+   "role": "RETIRED",
+   "parts": {
+    "minutes": "1.1.0",
+    "rates": "1.0.0 (hl20)",
+    "script_anchor": "point-diff rating"
+   }
+  },
+  {
+   "version": "STACK_V2",
+   "role": "REJECTED",
+   "parts": {
+    "minutes": "1.2.0",
+    "rates": "hl45",
+    "script_anchor": "V2_BLEND"
+   },
+   "reason": "totals worse on 2026-27 forward (+0.19 MAE, CI [0.035,0.345]) due to season scoring shift"
+  },
+  {
+   "version": "STACK_V2_ENV",
+   "role": "CHAMPION",
+   "promoted": "2026-11-13",
+   "parts": {
+    "minutes": "1.2.0",
+    "rates": "1.1.0 (hl45 + league_env)",
+    "script_anchor": "NBA_TEAM_RATING_V2 blend"
+   },
+   "vs_STACK_V1_2025_26": {
+    "games": 363,
+    "rows_per_market": 7837,
+    "mae_diff": {
+     "PTS": -0.0203,
+     "REB": -0.023,
+     "AST": -0.0117,
+     "3PM": -0.0095,
+     "PRA": -0.0385
+    },
+    "margin_mae": [
+     11.125,
+     10.82
+    ],
+    "margin_ci95": [
+     -0.6138,
+     -0.0148
+    ],
+    "total_mae": [
+     15.031,
+     15.085
+    ],
+    "total_ci95": [
+     -0.0829,
+     0.1948
+    ],
+    "win_brier": [
+     0.2097,
+     0.2023
+    ]
+   },
+   "vs_STACK_V1_2026_27_forward": {
+    "games": 121,
+    "rows_per_market": 2741,
+    "mae_diff": {
+     "PTS": -0.0629,
+     "REB": -0.0287,
+     "AST": -0.0193,
+     "3PM": -0.0128,
+     "PRA": -0.0852
+    },
+    "margin_mae": [
+     11.813,
+     11.593
+    ],
+    "total_mae": [
+     15.217,
+     15.081
+    ],
+    "win_brier": [
+     0.1959,
+     0.1941
+    ]
+   }
+  },
+  {
+   "name": "STACK_V2_ENV",
+   "role": "CHAMPION",
+   "reconfirmed": "2026-11-13",
+   "reproducibility": "Bit-identical rerun on 2025-26 and 2026-27 (same seeds, same inputs hash).",
+   "prospective": {
+    "db": "data/live/prospective.db",
+    "first_snapshots": "2026-11-14T01:36Z",
+    "games": 17,
+    "snapshots": 20
+   }
+  },
+  {
+   "name": "STACK_V3_SIGMA",
+   "role": "SHADOW",
+   "since": "2026-11-13",
+   "components": "minutes M3_SIGMA_ST + rates 1.1.0 + rating V2 blend + BETA_MKT"
+  },
+  {
+   "name": "STACK_V4_BLOWOUT",
+   "role": "SHADOW",
+   "since": "2026-11-14",
+   "components": "minutes BLOWOUT_GD + rates 1.1.0 + rating V2 blend + BETA_MKT",
+   "db": "data/live/shadow_STACK_V4_BLOWOUT.db"
+  },
+  {
+   "name": "STACK_V2_ENV",
+   "role": "CHAMPION",
+   "reconfirmed": "2026-11-14",
+   "reproducibility_v4": "2026-27 walk-forward re-run after all V4 code changes: max abs diff 0.0 (props and games)"
+  }
+ ],
+ "NBA_PROB_CALIBRATION_V2": [
+  {
+   "version": "BETA_MKT@2026-11-13",
+   "role": "PUBLISHED_LAYER",
+   "promoted": "2026-11-13",
+   "note": "Applied on top of champion raw probabilities; raw always stored alongside.",
+   "walk_forward": {
+    "rows": 201069,
+    "games": 443,
+    "blocks_monthly": "2025-12..2026-11",
+    "train": "strictly prior dates",
+    "brier": {
+     "RAW": 0.1926,
+     "BETA_MKT": 0.1915,
+     "diff": -0.00116,
+     "ci95": [
+      -0.00141,
+      -0.00091
+     ]
+    },
+    "logloss": {
+     "RAW": 0.5688,
+     "BETA_MKT": 0.564,
+     "diff": -0.00484,
+     "ci95": [
+      -0.00577,
+      -0.00389
+     ]
+    },
+    "ece": {
+     "RAW": 0.0282,
+     "BETA_MKT": 0.0037
+    }
+   },
+   "params_file": "models/calibration_beta_mkt.json"
+  },
+  {
+   "version": "HIER",
+   "role": "SHADOW",
+   "reason": "Brier 0.1914/LogLoss 0.5636 marginally better than BETA_MKT but ECE worse (0.0051) and more parameters; not enough to justify."
+  },
+  {
+   "version": "ISO_MKT",
+   "role": "REJECTED",
+   "reason": "Worse Brier/LogLoss than BETA_MKT (0.1918/0.5652); step function overfits low-volume ranges."
+  },
+  {
+   "version": "PLATT_GLOBAL/PLATT_MKT",
+   "role": "REJECTED",
+   "reason": "Dominated by BETA_MKT on all three metrics."
+  }
+ ],
+ "NBA_SCENARIO_PUBLICATION_V4": [
+  {
+   "version": "V4",
+   "role": "PRODUCTION",
+   "since": "2026-11-14",
+   "rules": {
+    "SINGLE": "one availability scenario: BASE rows are the published distribution",
+    "MIXTURE": "every enumerated status has a justified empirical play rate (and the window is within max_minutes_before_tip): exact draw-level mixture published (minutes 'MIXTURE', props/game 'MIX'), weights frozen + hashed at snapshot time",
+    "CONDITIONAL": "no justified weights: each scenario is a separate conditional forecast; settled only for the scenario whose conditions actually happened; no mixture published"
+   },
+   "settlement": "settle_published (V4): settles only the published label; forecast_results (V1) rows kept but superseded",
+   "finding": "V1 settlement used the first scenario. OKC@LAC 2026-11-13: questionable OKC player was OUT -> V1 settled the wrong (PLAYS) scenario; minutes MAE of the 3-game sample 6.42 (V1) -> 5.85 (V4 correct)."
+  }
+ ],
+ "PLAY_RATES_HIST": [
+  {
+   "version": "PLAY_RATES_HIST@2026-10-01",
+   "role": "PRODUCTION_WEIGHTS",
+   "source": "official NBA injury report PDFs 2025-12-22..2026-11-12 (321 reports, free)",
+   "outcome": "player appeared in the game (official boxscore); names resolved against the team's season roster (not the game box) to avoid upward bias",
+   "fit": "games 2025-12-22..2026-04-12",
+   "rates": {
+    "QUESTIONABLE": [
+     733,
+     0.509
+    ],
+    "DOUBTFUL": [
+     183,
+     0.0055
+    ],
+    "PROBABLE": [
+     323,
+     0.9505
+    ],
+    "OUT": [
+     4562,
+     0.0018
+    ]
+   },
+   "validation_2026_27": {
+    "QUESTIONABLE": {
+     "n": 175,
+     "observed": 0.48,
+     "predicted": 0.509
+    },
+    "DOUBTFUL": {
+     "n": 29,
+     "observed": 0.034,
+     "predicted": 0.0055
+    },
+    "PROBABLE": {
+     "n": 54,
+     "observed": 0.87,
+     "predicted": 0.9505
+    }
+   },
+   "applies_to": "windows <= 240 min before tip (rates measured ~100 min before tip, p90 160 min); earlier windows stay CONDITIONAL",
+   "unresolved_names": "1849 of 12249 rows (15%) not resolvable to a roster player; excluded"
+  }
+ ]
+}

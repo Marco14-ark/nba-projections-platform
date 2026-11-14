@@ -1,0 +1,75 @@
+# NBA platform: fully cloud cycle (no personal computer involved).
+# main branch = code + page; "state" branch = persistent data (one commit, force-pushed: no repo growth).
+name: nba-cycle
+on:
+  schedule:
+    - cron: "7,37 * * * *"          # every 30 min; cheap when no snapshot window is due
+  workflow_dispatch: {}
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: nba-cycle
+  cancel-in-progress: false
+jobs:
+  cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      NBA_DATA_DIR: ${{ github.workspace }}/state/data
+      NBA_CODE_DIR: ${{ github.workspace }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: { ref: state, path: state, fetch-depth: 1 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13", cache: pip, cache-dependency-path: requirements-ci.txt }
+      - run: pip install -r requirements-ci.txt
+      - name: Probe NBA sources
+        id: probe
+        continue-on-error: true
+        run: python scripts/ci/probe.py "$RUNNER_TEMP/probe.json"
+      - name: Fetch public NBA data
+        id: fetch
+        continue-on-error: true
+        run: python scripts/fetch_capture.py "$RUNNER_TEMP/capture.json" --archive state/data/s2627/nba_2026_27_pbp_box.jsonl.gz
+      - name: Model cycle (archive finals, settle published distributions, freeze due snapshots)
+        id: cycle
+        if: steps.fetch.outcome == 'success'
+        continue-on-error: true
+        run: python scripts/prospective_cycle.py "$RUNNER_TEMP/capture.json" | tee "$RUNNER_TEMP/cycle.log"
+      - name: Export public JSON and validate against snapshots
+        id: export
+        if: always()
+        continue-on-error: true
+        run: |
+          rm -rf state/web/data && python scripts/export_web.py state/web/data
+          python scripts/check_web_export.py state/web/data | tee "$RUNNER_TEMP/check.json"
+          python -c "import json,sys; d=json.load(open('$RUNNER_TEMP/check.json')); sys.exit(1 if d['n_problems'] else 0)"
+      - name: Public status
+        if: always()
+        env:
+          STEPS_JSON: '{"probe":"${{ steps.probe.outcome }}","fetch":"${{ steps.fetch.outcome }}","cycle":"${{ steps.cycle.outcome }}","export":"${{ steps.export.outcome }}"}'
+        run: mkdir -p state/web/data && python scripts/ci/status.py state/web/data/status.json "$RUNNER_TEMP/probe.json" "$RUNNER_TEMP/cycle.log"
+      - name: Persist state (single commit, force-pushed)
+        if: always()
+        run: |
+          cd state
+          ls -t data/live/bundle_*.json 2>/dev/null | tail -n +4 | xargs -r rm -f
+          git config user.name "nba-cycle-bot"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan next && git add -A && git commit -qm "state $(date -u +%FT%TZ) run ${{ github.run_id }}"
+          git push -f origin next:state
+      - name: Build site
+        if: always()
+        run: mkdir -p _site && cp web/index.html _site/ && cp -r state/web/data _site/data && touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        if: always()
+        with: { path: _site }
+      - id: deploy
+        if: always()
+        uses: actions/deploy-pages@v4

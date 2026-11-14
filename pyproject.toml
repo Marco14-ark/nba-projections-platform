@@ -1,0 +1,28 @@
+[project]
+name = "nba-platform"
+version = "0.1.0"
+description = "NBA projection & market intelligence platform — Phase 1 (data, rosters, injuries, minutes)"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "pandas>=2.1",
+  "requests>=2.31",
+  "pdfplumber>=0.11",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "reportlab>=4"]
+postgres = ["psycopg[binary]>=3.1"]
+
+[project.scripts]
+nba-platform = "nba_platform.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["nba_platform*"]
+
+[tool.setuptools.package-data]
+"nba_platform.db" = ["schema.sql"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

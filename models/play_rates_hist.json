@@ -1,0 +1,104 @@
+{
+ "name": "PLAY_RATES_HIST",
+ "fitted_through": "2026-10-01",
+ "n_reports_rows": 10400,
+ "unresolved_names": 1849,
+ "unmatched_games": 113,
+ "minutes_before_tip_median": 102.02,
+ "minutes_before_tip_p90": 150.0,
+ "rates": {
+  "AVAILABLE": {
+   "n": 1100,
+   "p_play": 0.8518
+  },
+  "DOUBTFUL": {
+   "n": 183,
+   "p_play": 0.0055
+  },
+  "NOT_WITH_TEAM": {
+   "n": 1954,
+   "p_play": 0.001
+  },
+  "OUT": {
+   "n": 4562,
+   "p_play": 0.0018
+  },
+  "PROBABLE": {
+   "n": 323,
+   "p_play": 0.9505
+  },
+  "QUESTIONABLE": {
+   "n": 733,
+   "p_play": 0.5089
+  },
+  "REST": {
+   "n": 68,
+   "p_play": 0.0
+  },
+  "SUSPENDED": {
+   "n": 55,
+   "p_play": 0.0
+  }
+ },
+ "validation_2026_27": {
+  "AVAILABLE": {
+   "n": 127,
+   "observed": 0.685,
+   "predicted": 0.8518,
+   "brier": 0.2436,
+   "brier_coinflip": 0.25
+  },
+  "DOUBTFUL": {
+   "n": 29,
+   "observed": 0.034,
+   "predicted": 0.0055,
+   "brier": 0.0341,
+   "brier_coinflip": 0.25
+  },
+  "NOT_WITH_TEAM": {
+   "n": 242,
+   "observed": 0.008,
+   "predicted": 0.001,
+   "brier": 0.0082,
+   "brier_coinflip": 0.25
+  },
+  "OUT": {
+   "n": 787,
+   "observed": 0.0,
+   "predicted": 0.0018,
+   "brier": 0.0,
+   "brier_coinflip": 0.25
+  },
+  "PROBABLE": {
+   "n": 54,
+   "observed": 0.87,
+   "predicted": 0.9505,
+   "brier": 0.1192,
+   "brier_coinflip": 0.25
+  },
+  "QUESTIONABLE": {
+   "n": 175,
+   "observed": 0.48,
+   "predicted": 0.5089,
+   "brier": 0.2504,
+   "brier_coinflip": 0.25
+  },
+  "REST": {
+   "n": 7,
+   "observed": 0.0,
+   "predicted": 0.0,
+   "brier": 0.0,
+   "brier_coinflip": 0.25
+  },
+  "SUSPENDED": {
+   "n": 1,
+   "observed": 0.0,
+   "predicted": 0.0,
+   "brier": 0.0,
+   "brier_coinflip": 0.25
+  }
+ },
+ "_meta": {
+  "max_minutes_before_tip": 240
+ }
+}
