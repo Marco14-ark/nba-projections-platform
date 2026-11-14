@@ -1,0 +1,12 @@
+{"_synthetic": "TEST FIXTURE ONLY - invented structure check, never real odds, never published",
+ "id": "synthevt2", "commence_time": "2026-12-01T03:30:00Z", "home_team": "Los Angeles Clippers", "away_team": "Boston Celtics",
+ "bookmakers": [{"key": "draftkings", "last_update": "2026-12-01T01:00:00Z", "markets": [
+   {"key": "h2h", "outcomes": [{"name": "Los Angeles Clippers", "price": -150}, {"name": "Boston Celtics", "price": 130}]},
+   {"key": "spreads", "outcomes": [{"name": "Los Angeles Clippers", "price": -110, "point": -3.5}, {"name": "Boston Celtics", "price": -110, "point": 3.5}]},
+   {"key": "totals", "outcomes": [{"name": "Over", "price": -105, "point": 221.5}, {"name": "Under", "price": -115, "point": 221.5}]},
+   {"key": "team_totals", "outcomes": [{"name": "Over", "description": "Boston Celtics", "price": -110, "point": 108.5}]},
+   {"key": "player_points", "outcomes": [{"name": "Over", "description": "Synth Player-One Jr.", "price": -120, "point": 20.5},
+                                         {"name": "Under", "description": "Synth Player-One Jr.", "price": 100, "point": 20.5}]},
+   {"key": "player_field_goals", "outcomes": [{"name": "Over", "description": "Synth Player-One Jr.", "price": -110, "point": 7.5}]},
+   {"key": "player_blocks", "outcomes": [{"name": "Over", "description": "Synth Player-One Jr.", "price": -110, "point": 0.5}]}
+ ]}]}

@@ -170,8 +170,18 @@ class Autopilot:
 
     DIST_MARKETS = ("PTS", "REB", "AST", "3PM", "PRA", "PR", "PA", "RA", "FGA", "FGM", "3PA")
 
+    def _insert_game_dists(self, snap_id: str, gs, label: str) -> None:
+        h = np.asarray(gs.home.score, dtype=np.int64)
+        a = np.asarray(gs.away.score, dtype=np.int64)
+        for mk, x in (("MARGIN", h - a), ("TOTAL", h + a), ("HOME_PTS", h), ("AWAY_PTS", a)):
+            lo = int(x.min())
+            self.s.x("INSERT INTO game_distributions VALUES (?,?,?,?,?,?)",
+                     (snap_id, label, mk, int(len(x)), lo,
+                      json.dumps(np.bincount(x - lo).tolist(), separators=(",", ":"))))
+
     def _insert_props(self, snap_id: str, gs, label: str) -> None:
         from ..sim.markets import PROP_MARKETS
+        self._insert_game_dists(snap_id, gs, label)
         for T in (gs.home, gs.away):
             for k, pid in enumerate(T.players):
                 for mk in self.DIST_MARKETS:

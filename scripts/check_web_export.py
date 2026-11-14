@@ -4,10 +4,12 @@ import json, os, re, sqlite3, sys
 D = os.environ.get("NBA_DATA_DIR", "/home/claude/data")
 W = sys.argv[1]
 c = sqlite3.connect(f"file:{D}/live/prospective.db?mode=ro", uri=True); c.row_factory = sqlite3.Row
+ODB = sqlite3.connect(f"file:{D}/odds/odds.db?mode=ro", uri=True) if os.path.exists(f"{D}/odds/odds.db") else None
 problems, checked = [], {"games": 0, "props": 0, "injuries": 0}
 for f in os.listdir(os.path.join(W, "games")):
     g = json.load(open(os.path.join(W, "games", f)))
     fc = g["forecast"]
+    fc_gid = g["game_id"]
     snap = c.execute("SELECT * FROM forecast_snapshots WHERE snapshot_id=?", (fc["snapshot_id"],)).fetchone()
     if snap is None:
         problems.append(f"{f}: snapshot not in DB"); continue
@@ -34,6 +36,19 @@ for f in os.listdir(os.path.join(W, "games")):
             checked["injuries"] += 1
             if not (i["source"] and i["report_ts"] and i["observed_at"]):
                 problems.append(f"{f}: injury without source/timestamp {i['player_id']}")
+    # V8: every published sportsbook price must exist in the real odds history (no invented / synthetic lines)
+    for o in (fc.get("odds") or {}).get("rows", []):
+        checked["odds_rows"] = checked.get("odds_rows", 0) + 1
+        hit = ODB.execute("""SELECT 1 FROM odds_quotes q JOIN odds_fetches f ON f.fetch_id=q.fetch_id
+                             WHERE f.synthetic=0 AND f.ok=1 AND q.provider=? AND q.book=? AND q.game_id=? AND q.market=? AND q.side=?
+                             AND q.price=? AND (q.line IS ? OR q.line=?) LIMIT 1""",
+                          (o["provider"], o["book"], fc_gid, o["market"], o["side"], o["price"], o["line"], o["line"])).fetchone() if ODB else None
+        if not hit:
+            problems.append(f"{f}: odds row not found in odds history {o['book']} {o['market']} {o['side']} {o['price']}")
+    for lb, v in (fc.get("coherence") or {}).items():
+        for side, x in v.items():
+            if abs((x["team"] or 0) - (x["sum_players"] or 0)) > 0.6:
+                problems.append(f"{f}: player points do not add up to team total ({lb} {side})")
     checked["games"] += 1
 blob = "".join(open(os.path.join(r, x)).read() for r, _, fs in os.walk(W) for x in fs)
 for pat in (r"/home/", r"/Users/", r"@gmail", r"\.db\b", r"token", r"password"):

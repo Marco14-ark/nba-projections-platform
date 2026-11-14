@@ -14,6 +14,8 @@ import numpy as np, pandas as pd
 from nba_platform.core.timeutil import ET
 from nba_platform.sim.calibration_v2 import apply_production
 from nba_platform.sources.teams import TEAMS
+from nba_platform.odds import evaluate as odds_eval
+from nba_platform.odds.store import OddsStore
 
 D = os.environ.get("NBA_DATA_DIR", "/home/claude/data")
 OUT = sys.argv[1]
@@ -66,7 +68,15 @@ slate, player_refs = [], defaultdict(list)
 logs = pd.read_pickle(os.path.join(D, "real_logs_v3.pkl"))
 season = logs[logs.game_date_et >= "2026-10-01"]
 last_team = season.sort_values("game_date_et").groupby("player_id").team_id.last().to_dict()
-integrity = {"team_mismatch": [], "post_tip_snapshot": 0}
+integrity = {"team_mismatch": [], "post_tip_snapshot": 0, "coherence_max_gap": 0.0}
+# ------------------------------------------------------------------ sportsbook odds (real captures only)
+ODDS_DB = os.path.join(D, "odds", "odds.db")
+ODDS_STATUS = json.load(open(os.path.join(D, "odds", "odds_status.json"))) if os.path.exists(os.path.join(D, "odds", "odds_status.json")) else None
+GATE = json.load(open(os.path.join(D, "odds", "market_gate.json"))) if os.path.exists(os.path.join(D, "odds", "market_gate.json")) else {}
+odds_store = OddsStore(ODDS_DB) if os.path.exists(ODDS_DB) else None
+CAL_PARAMS = {"markets": {k: {x: v[x] for x in ("a", "b", "c")} for k, v in CAL["markets"].items()}, "eps": 1e-4}
+opportunities = []
+HAS_GDIST = bool(c.execute("SELECT 1 FROM sqlite_master WHERE name='game_distributions'").fetchone())
 
 for g in games:
     snap = c.execute("""SELECT * FROM forecast_snapshots WHERE game_id=? AND created_at < ? ORDER BY created_at DESC LIMIT 1""",
@@ -198,6 +208,46 @@ for g in games:
         player_refs[pl["player_id"]].append({"game_id": g["game_id"], "date_et": g["game_date_et"], "opp": pl["opp"],
                                              "home": pl["home"], "scenario": pl["scenario"], "minutes": pl["minutes"],
                                              "markets": {k: {x: v[x] for x in ("mean", "median", "p10", "p90")} for k, v in pl["markets"].items()}})
+    # V8: exact game-level Monte Carlo distributions of the published label(s) (same simulations as props)
+    gdist = defaultdict(dict)
+    for dr in ([] if not HAS_GDIST else c.execute(f"""SELECT * FROM game_distributions WHERE snapshot_id=? AND scenario IN ({','.join('?' * len(labels))})""",
+                        (sid, *labels))):
+        gdist[dr["scenario"]][dr["market"]] = {"n": dr["n"], "lo": dr["lo"], "c": json.loads(dr["counts"])}
+    for gm_ in game_markets:
+        if gm_["label"] in gdist:
+            gm_["dist"] = gdist[gm_["label"]]
+    forecast["has_game_distributions"] = bool(gdist)
+    # coherence: player points (same simulations) must add up to the team totals
+    coh = {}
+    for gm_ in game_markets:
+        for side, key in (("home", "proj_home"), ("away", "proj_away")):
+            sp = sum((pl["markets"].get("PTS") or {}).get("mean") or 0 for pl in players.values()
+                     if pl["scenario"] == gm_["label"] and pl["home"] == (side == "home"))
+            if any(pl["scenario"] == gm_["label"] for pl in players.values()):
+                coh.setdefault(gm_["label"], {})[side] = {"team": gm_["markets"][key], "sum_players": r(sp, 1)}
+                integrity["coherence_max_gap"] = max(integrity["coherence_max_gap"], abs((gm_["markets"][key] or 0) - sp))
+    forecast["coherence"] = coh
+    # sportsbook lines vs model (only real captured quotes; nothing when no provider is configured)
+    odds_rows = []
+    if odds_store is not None:
+        qs = odds_store.current(game_id=g["game_id"])
+        if qs:
+            single = len(labels) == 1
+            lb0 = labels[0]
+            gd = {k: (v["lo"], v["c"]) for k, v in gdist.get(lb0, {}).items()} if single else None
+            pdists = {pl["player_id"]: {m: (v["lo"], v["c"]) for m, v in (pl.get("dist") or {}).items()}
+                      for pl in players.values() if pl["scenario"] == (plabels[0] if len(plabels) == 1 else None)}
+            pregame = status == "SCHEDULED" and NOW < datetime.fromisoformat(g["tip_utc"].replace("Z", "+00:00"))
+            odds_rows = odds_eval.build(qs, gd, pdists, CAL_PARAMS, GATE, NOW, pregame,
+                                        set(late) | {i["player_id"] for s_ in ("home", "away") for i in injuries[s_]
+                                                     if i["after_snapshot"] and i["status"] != "AVAILABLE"}, not single or len(plabels) != 1,
+                                        {pid: pname(pid) for pid in {q.get("player_id") for q in qs} if pid})
+            for o in odds_rows:
+                if o.get("ev") is not None:
+                    opportunities.append({"game_id": g["game_id"], "game": f"{away['tri']} @ {home['tri']}",
+                                          "tip_utc": g["tip_utc"], **o})
+    forecast["odds"] = {"status": "OK" if odds_rows else "NO_MARKET_DATA", "rows": odds_rows,
+                        "books": sorted({o["book"] for o in odds_rows})}
     detail = {**base, "forecast": forecast,
               "props": {"labels": [{"label": lb, "conditions": cond_text(pscen.get(lb, {}).get("conditions", {})),
                                     "weight": pscen.get(lb, {}).get("weight")} for lb in plabels],
@@ -206,6 +256,9 @@ for g in games:
     lite = {k: forecast[k] for k in ("snapshot_id", "window", "created_at", "flag", "publication", "starters", "key_players",
                                      "minutes_before_tip", "has_distributions", "late_status_conflicts")}
     lite["injury_count"] = {s: len(v) for s, v in injuries.items()}
+    lite["has_game_distributions"] = forecast["has_game_distributions"]
+    lite["odds_status"] = forecast["odds"]["status"]
+    lite["odds_books"] = forecast["odds"]["books"]
     lite["injuries"] = {s: [i for i in v if i["status"] not in ("AVAILABLE",)] for s, v in injuries.items()}
     lite["markets"] = game_markets[0]["markets"] if len(game_markets) == 1 else None
     lite["scenarios"] = [{"label": x["label"], "conditions": x["conditions"], "weight": x["weight"],
@@ -276,6 +329,14 @@ results["historical"] = {
     "minutes_blowout_challenger": [x for x in REG["NBA_MINUTES_ENGINE_V1"] if "BLOWOUT_GD" in str(x.get("version"))][-1]["walk_forward"],
     "challengers": [{"name": x["name"], "role": x["role"], "since": x.get("since")} for x in REG["STACK"] if x.get("role") == "SHADOW"],
     "play_rates": {"fitted_through": PR["fitted_through"], "rates": PR["rates"], "validation_2026_27": PR["validation_2026_27"]}}
+GV = os.path.join(ROOT, "docs", "validation", "game_markets_v8.json")
+if os.path.exists(GV):
+    gv = json.load(open(GV))
+    results["historical"]["game_markets_v8"] = {k: {x: v[x] for x in ("n_games", "dates", "moneyline", "spread", "total", "team_totals", "cohorts")}
+                                                for k, v in gv.items() if k.split("|")[0] in ("STACK_V2_ENV", "STACK_V3_SIGMA", "STACK_V4_BLOWOUT")
+                                                and k.split("|")[1] == "v3"}
+GR = os.path.join(D, "odds", "market_gate_report.json")
+results["market_gate"] = json.load(open(GR)) if os.path.exists(GR) else None
 json.dump(results, open(os.path.join(OUT, "results.json"), "w"), separators=(",", ":"), default=str)
 
 live = {}
@@ -289,11 +350,18 @@ meta = {"generated_at": NOW.isoformat(timespec="seconds"), "champion": champ["na
         "calibration": CAL.get("version"), "results_through": last_final,
         "latest_injury_report": {"report_ts": inj_last[0], "captured_at": inj_last[1]},
         "snapshots_total": c.execute("SELECT COUNT(*) FROM forecast_snapshots").fetchone()[0],
-        "sportsbook_lines": None,
+        "sportsbook_lines": {"status": ("OK" if opportunities else "NO_MARKET_DATA"),
+                             "providers": (ODDS_STATUS or {}).get("providers"), "checked_at": (ODDS_STATUS or {}).get("generated_at"),
+                             "market_gate": {k: v.get("status") for k, v in GATE.items()} or "NOT_VALIDATED_VS_MARKET"},
         "calibration_params": {"version": CAL.get("version"), "markets": {k: {x: v[x] for x in ("a", "b", "c")} for k, v in CAL["markets"].items()},
                                "eps": 1e-4, "valid_for": "half-point lines; fitted on lines within the model fair line +-1..6"}, "integrity": {"team_mismatch": len(integrity["team_mismatch"]),
                                                  "post_tip_snapshots_exported": integrity["post_tip_snapshot"]},
         "dates": dates}
 json.dump(meta, open(os.path.join(OUT, "meta.json"), "w"), indent=1)
+rank = {"VALUE": 0, "NO_BET": 1}
+opportunities.sort(key=lambda o: (rank.get(o["decision"], 2), -(o.get("ev_conservative") or -9), o.get("odds_age_min") or 9e9))
+json.dump({"generated_at": meta["generated_at"], "status": meta["sportsbook_lines"]["status"],
+           "rows": opportunities[:600], "n_total": len(opportunities)},
+          open(os.path.join(OUT, "opportunities.json"), "w"), separators=(",", ":"))
 json.dump({"generated_at": meta["generated_at"], "games": slate}, open(os.path.join(OUT, "slate.json"), "w"), separators=(",", ":"))
 print(json.dumps({**meta, "games": len(slate), "players": len(pl_index), "team_mismatch_list": integrity["team_mismatch"][:10]}, indent=1))

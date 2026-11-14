@@ -157,6 +157,7 @@ details.tech summary { cursor: pointer; }
       <a href="#overview" data-v="overview">Overview</a>
       <a href="#props" data-v="props">Player Props</a>
       <a href="#markets" data-v="markets">Game Markets</a>
+      <a href="#opps" data-v="opps">Market Opportunities</a>
       <a href="#players" data-v="players">Player Pages</a>
       <a href="#results" data-v="results">Results</a>
     </nav>
@@ -349,7 +350,7 @@ function distSVG(m, lo, hi) {
 function pmfSVG(d, line) {
   const W = 320, H = 90, n = d.c.length, mx = Math.max(...d.c), bw = (W - 8) / n;
   const lbl = [d.lo, d.lo + Math.round((n - 1) / 2), d.lo + n - 1];
-  return `<svg viewBox="0 0 ${W} ${H + 14}" style="width:100%" aria-label="Distribución Monte Carlo">
+  return `<svg viewBox="0 0 ${W} ${H + 14}" style="width:100%;max-width:640px;display:block;margin:0 auto" aria-label="Distribución Monte Carlo">
     ${d.c.map((c, i) => { const v = d.lo + i, h = c / mx * (H - 4); const col = v > line ? "#ff7a2f" : v < line ? "#5aa9ff" : "#e8eef6";
       return `<rect x="${4 + i * bw}" y="${H - h}" width="${Math.max(bw - 1, 1)}" height="${h}" fill="${col}" opacity=".85"><title>${v}: ${(100 * c / d.n).toFixed(1)}%</title></rect>`; }).join("")}
     ${line >= d.lo && line <= d.lo + n - 1 ? `<line x1="${4 + (line - d.lo + .5) * bw}" x2="${4 + (line - d.lo + .5) * bw}" y1="0" y2="${H}" stroke="#e8eef6" stroke-dasharray="3 3"/>` : ""}
@@ -365,7 +366,8 @@ function calcPanel(p) {
       <span class="small muted" id="cname"></span></div>
     <div id="cout"></div></div>`;
 }
-function bindCalc(p) {
+let setCalc = () => {};
+function bindCalc(p, preset) {
   if (!p.dist) return;
   let mk = CALC_MKTS.find(m => p.dist[m]);
   const setDefault = () => { const fl = p.markets[mk]?.fair_line; const st = pmf(p.dist[mk]); $("#cline").value = fl != null ? fl : (Math.floor(st.pct(.5)) + .5); };
@@ -389,10 +391,12 @@ function bindCalc(p) {
   };
   document.querySelectorAll("[data-cm]").forEach(b => b.onclick = () => { mk = b.dataset.cm; document.querySelectorAll("[data-cm]").forEach(x => x.classList.toggle("on", x === b)); setDefault(); run(); });
   $("#cline").oninput = run;
+  setCalc = (m2, line) => { if (!p.dist[m2]) return; mk = m2; document.querySelectorAll("[data-cm]").forEach(x => x.classList.toggle("on", x.dataset.cm === m2)); $("#cline").value = line; run(); $("#calc").scrollIntoView({ behavior: "smooth", block: "center" }); };
   setDefault(); run();
+  if (preset) setCalc(preset.market, preset.line);
 }
 
-function playerDrawer(p, g, labels) {
+function playerDrawer(p, g, labels, preset) {
   const lab = labels?.find(l => l.label === p.scenario);
   const cond = lab && lab.conditions.length ? `<div class="note warn">Escenario condicional: ${lab.conditions.map(c => `${esc(c.player)} ${c.state === "OUT" ? "no juega" : "juega"}`).join(", ")}.</div>` : "";
   const late = p.late_status ? `<div class="note warn">Reporte oficial posterior al snapshot: ${esc(STATUS_ES[p.late_status.status] || p.late_status.status)} (${esc(p.late_status.reason || "")}, ${tfmt(p.late_status.report_ts)}). Esta proyección se hizo antes y no lo refleja; se recalcula en la siguiente ventana.</div>` : "";
@@ -418,10 +422,11 @@ function playerDrawer(p, g, labels) {
     <details><summary class="small" style="cursor:pointer">Resumen de todos los mercados</summary>
     <div class="legend"><span><span class="sw" style="background:rgba(255,122,47,.25)"></span>P10–P90</span><span><span class="sw" style="background:rgba(255,122,47,.6)"></span>P25–P75</span><span><span class="sw" style="background:#ff7a2f;width:4px"></span>Mediana</span><span>- - - Línea justa del modelo</span></div>
     ${rows}</details>
-    <div class="note" style="margin-top:14px">Sin líneas de sportsbook: no hay una fuente gratuita y autorizada, así que no se calcula EV. Las cuotas son justas, sin margen.</div>
+    ${g ? playerLines(g, p) : ""}
     <p class="small"><a href="#player-${esc(p.player_id)}" id="dplayer">Ver página del jugador</a></p>`;
   openDrawer();
-  bindCalc(p);
+  bindCalc(p, preset);
+  document.querySelectorAll("tr[data-pl]").forEach(r => r.onclick = () => { const [mkk, ln] = r.dataset.pl.split("|"); setCalc(mkk, +ln); });
   $("#dclose").onclick = closeDrawer;
   $("#dplayer").onclick = () => closeDrawer();
 }
@@ -492,7 +497,7 @@ function marketsRow(g, sc, m) {
     <td class="n">${sgn(m.fair_spread_home)}</td>
     <td class="n">${f1(m.fair_total)} <span class="muted">(${f0(m.total.p10)}–${f0(m.total.p90)})</span></td>
     <td class="n">${f1(m.team_total_away.mean)} / ${f1(m.team_total_home.mean)}</td>
-    <td class="n">${pct(m.p_ot)}</td></tr>`;
+    <td class="n">${pct(m.p_ot)}</td><td class="small">${(g.forecast?.odds?.books || []).length ? g.forecast.odds.books.map(BOOK_ES).map(esc).join(", ") : `<span class="tag">NO MARKET DATA</span>`}</td></tr>`;
 }
 async function viewMarkets() {
   const gs = S.slate.games.filter(g => g.date_et === S.date && g.forecast);
@@ -502,9 +507,9 @@ async function viewMarkets() {
   const rows = det.map(d => d.forecast.game_markets.map(x => marketsRow(d, x.conditions.length ? x.conditions.map(c => c.player.split(" ").slice(-1)[0] + (c.state === "OUT" ? " fuera" : " juega")).join(", ") : "", x.markets)).join("")).join("");
   $("#app").innerHTML = `<div class="section-title"><h2>Game Markets</h2><span class="muted small">Moneyline, spread, total y team totals justos del modelo (sin margen).</span></div>
     ${dateChips()}
-    <div class="note">No hay cuotas de casas de apuestas obtenidas de forma gratuita y autorizada, así que no se calcula EV. Los partidos con jugadores en duda muestran una fila por escenario condicional.</div>
-    <div class="table-wrap"><table><thead><tr><th>Partido</th><th class="n">Marcador proy.</th><th class="n">P(gana) vis/loc</th><th class="n">ML justa vis/loc</th><th class="n">Spread local</th><th class="n">Total (P10–P90)</th><th class="n">Team totals</th><th class="n">P(OT)</th></tr></thead>
-    <tbody>${rows || `<tr><td colspan="8" class="muted">Sin snapshots para esta fecha.</td></tr>`}</tbody></table></div>`;
+    <div class="note">Toca un partido para abrir las calculadoras de Moneyline, Spread, Total y Team Totals con cualquier línea. Columna "Mercado": casas con líneas reales capturadas, o NO MARKET DATA. Los partidos con jugadores en duda muestran una fila por escenario condicional.</div>
+    <div class="table-wrap"><table><thead><tr><th>Partido</th><th class="n">Marcador proy.</th><th class="n">P(gana) vis/loc</th><th class="n">ML justa vis/loc</th><th class="n">Spread local</th><th class="n">Total (P10–P90)</th><th class="n">Team totals</th><th class="n">P(OT)</th><th>Mercado</th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="9" class="muted">Sin snapshots para esta fecha.</td></tr>`}</tbody></table></div>`;
   bindDates(viewMarkets);
   document.querySelectorAll("tr[data-game]").forEach(r => r.onclick = () => location.hash = "game-" + r.dataset.game);
 }
@@ -537,6 +542,8 @@ async function viewGame(gid) {
       <div>Snapshot ${esc(f.snapshot_id)} · creado ${esc(f.created_at)} · ${esc(f.minutes_before_tip)} min antes del inicio · hash de insumos ${esc(f.input_hash)} · modelo ${esc(f.model)} ${esc(f.model_version)} · stack ${esc(f.stack)} · calibración ${esc(f.calibration)} · publicación ${esc(f.publication.GAME)}${f.data_flags?.length ? " · banderas: " + esc(f.data_flags.join(", ")) : ""}</div></details>
     ${mk.length > 1 ? `<div class="note warn">Hay jugadores en duda sin probabilidad justificada para esta ventana. El modelo publica un pronóstico separado para cada escenario y, al terminar el partido, solo se evalúa el escenario que ocurrió.</div>` : ""}
     <div class="two">${scen}</div>
+    ${gameMarketsSection(d)}
+    ${bookSection(d)}
     <div class="two">
       <div class="card"><h3>Titulares</h3>${["away", "home"].map(s => `<div><div class="small muted">${esc(d[s].tri)} · ${f.starters[s].state === "CONFIRMED" ? "confirmados" : "esperados por el modelo"}</div><div>${f.starters[s].players.map(p => `<a href="#player-${esc(p.player_id)}">${esc(p.player)}</a>`).join(", ")}</div></div>`).join("")}</div>
       <div class="card"><h3>Lesiones</h3>
@@ -553,6 +560,182 @@ async function viewGame(gid) {
     </div>
     ${labels.map(l => `<div class="section-title"><h3>Props${l.conditions.length ? " · " + l.conditions.map(c => esc(c.player) + (c.state === "OUT" ? " no juega" : " juega")).join(", ") : ""}</h3><span class="small muted">Toca un jugador para ver su distribución</span></div>${ptable(l.label)}`).join("")}`;
   document.querySelectorAll("tr[data-pid]").forEach(r => r.onclick = () => playerDrawer(props.find(p => p.player_id === r.dataset.pid && p.scenario === r.dataset.sc), d, labels));
+  bindGameMarkets(d); bindBooks(d);
+}
+
+// ===================================================================== V8: game-market calculators + sportsbook layer
+const fairPush = (p, push) => (1 - push) > 0 ? american(p / (1 - push)) : null;
+const MKTG = { ML: "Moneyline", SPREAD: "Spread", TOTAL: "Total", TEAM_TOTAL: "Team total" };
+const MKTALL = k => MKTG[k] || MKT[k] || MKT2[k] || k;
+const BLOCK_ES = { NOT_VALIDATED_VS_MARKET: "mercado sin validar contra líneas reales", STALE_ODDS: "cuota vieja", NOT_PREGAME: "partido ya empezó",
+  LATE_STATUS_CHANGE: "cambio de estatus posterior al snapshot", ONE_SIDED_PRICE: "solo un lado con precio", CONDITIONAL_FORECAST: "pronóstico condicional",
+  NO_CONSERVATIVE_EDGE: "sin ventaja conservadora", UNMATCHED: "jugador/partido sin identificar", NO_MODEL_DISTRIBUTION: "sin distribución del modelo" };
+const BOOK_ES = b => ({ draftkings: "DraftKings", fanduel: "FanDuel", betmgm: "BetMGM", caesars: "Caesars", williamhill: "Caesars (William Hill)", espnbet: "ESPN BET",
+  bovada: "Bovada", unibet: "Unibet", pointsbet: "PointsBet", bet365: "bet365", fanatics: "Fanatics", betrivers: "BetRivers" }[b] || b);
+// side probabilities from the stored game distributions — same rules as nba_platform/odds/value.py
+function gameSide(gd, market, side, line) {
+  if (market === "ML") { const p = lineProbs(gd.MARGIN, 0); return { win: (side === "home" ? p.over : p.under) + p.push / 2, push: 0 }; }
+  if (market === "SPREAD") { if (side === "home") { const p = lineProbs(gd.MARGIN, -line); return { win: p.over, push: p.push, lose: p.under }; }
+    const p = lineProbs(gd.MARGIN, line); return { win: p.under, push: p.push, lose: p.over }; }
+  const d = market === "TOTAL" ? gd.TOTAL : (side === "home" ? gd.HOME_PTS : gd.AWAY_PTS);
+  return lineProbs(d, line);
+}
+function oddsRows(d) { return d.forecast?.odds?.rows || []; }
+function decisionTag(o) {
+  if (!o) return `<span class="tag">NO MARKET DATA</span>`;
+  return o.decision === "VALUE" ? `<span class="tag final">VALOR</span>` : `<span class="tag out" title="${esc((o.blockers || []).map(b => BLOCK_ES[b] || b).join(" · "))}">NO BET</span>`;
+}
+function sideLabel(d, o) {
+  if (o.kind === "PLAYER") return `${o.side === "over" ? "Over" : "Under"} ${o.line}`;
+  if (o.market === "ML") return `${esc(d[o.side].tri)}`;
+  if (o.market === "SPREAD") return `${esc(d[o.side].tri)} ${sgn(o.line)}`;
+  if (o.market === "TEAM_TOTAL") return `${esc(d[o.team_side].tri)} ${o.side === "over" ? "Over" : "Under"} ${o.line}`;
+  return `${o.side === "over" ? "Over" : "Under"} ${o.line}`;
+}
+function marketCompare(d, market, filt) {
+  const rows = oddsRows(d).filter(o => o.kind === "GAME" && o.market === market && (!filt || filt(o)));
+  if (!rows.length) return `<div class="small muted" style="margin-top:6px">Mercado real: <span class="tag">NO MARKET DATA</span> — no hay líneas capturadas de una fuente autorizada para este mercado.</div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>Casa</th><th>Lado</th><th class="n">Cuota</th><th class="n">Modelo</th><th class="n">Sin vig</th><th class="n">Edge</th><th class="n">EV</th><th class="n">EV cons.</th><th class="n">Edad</th><th></th></tr></thead><tbody>
+    ${rows.map(o => `<tr><td>${esc(BOOK_ES(o.book))}</td><td>${sideLabel(d, o)}</td><td class="n">${odds(o.price)}</td><td class="n">${pct(o.p_model)}</td><td class="n">${pct(o.no_vig)}</td><td class="n">${o.edge == null ? "—" : sgn(100 * o.edge) + "%"}</td><td class="n">${o.ev == null ? "—" : sgn(100 * o.ev) + "%"}</td><td class="n">${o.ev_conservative == null ? "—" : sgn(100 * o.ev_conservative) + "%"}</td><td class="n">${o.odds_age_min == null ? "—" : f0(o.odds_age_min) + " min"}</td><td>${decisionTag(o)}</td></tr>`).join("")}</tbody></table></div>`;
+}
+function gmStats(d0) { const s = pmf(d0); return s; }
+function gameMarketsSection(d) {
+  const f = d.forecast, mk = f.game_markets;
+  const opts = mk.map((x, i) => `<option value="${i}">${x.conditions.length ? x.conditions.map(c => esc(c.player) + (c.state === "OUT" ? " no juega" : " juega")).join(", ") : (x.label === "MIX" ? "Publicado (mezcla de escenarios)" : "Proyección publicada")}</option>`).join("");
+  return `<div class="card" id="gm"><div class="section-title"><h3>Mercados del partido</h3>
+      ${mk.length > 1 ? `<select id="gmsc" aria-label="Escenario">${opts}</select>` : `<span class="small muted">Simulación Monte Carlo conjunta del snapshot congelado</span>`}</div>
+    <div class="bar" role="tablist">${["ML", "SPREAD", "TOTAL", "TEAM_TOTAL"].map((k, i) => `<button class="chip ${i ? "" : "on"}" role="tab" data-gt="${k}">${MKTG[k]}</button>`).join("")}</div>
+    <div id="gmbody"></div></div>`;
+}
+function bindGameMarkets(d) {
+  const f = d.forecast; let sc = 0, tab = "ML";
+  const H = d.home.tri, A = d.away.tri;
+  const render = () => {
+    const x = f.game_markets[sc], m = x.markets, gd = x.dist, body = $("#gmbody");
+    if (!gd) {
+      body.innerHTML = `<div class="note">Este snapshot se congeló antes de que se guardaran las distribuciones completas del partido, así que la calculadora de cualquier línea no está disponible. Se activa con el siguiente snapshot. Resumen publicado: ${esc(A)} ${f1(m.proj_away)} – ${esc(H)} ${f1(m.proj_home)}, P(gana ${esc(H)}) ${pct(m.p_home_win)}, total ${f1(m.total.mean)}.</div>`;
+      return;
+    }
+    const n = gd.MARGIN.n, mg = pmf(gd.MARGIN), tt = pmf(gd.TOTAL);
+    const se = p => 1.96 * Math.sqrt(p * (1 - p) / n);
+    if (tab === "ML") {
+      const ph = gameSide(gd, "ML", "home").win, pa = 1 - ph;
+      body.innerHTML = `${winbar(ph, A, H)}
+        <div class="res3"><div><div class="k">${esc(A)} gana</div><div class="big">${pct(pa)}</div><div class="small muted">justa ${odds(american(pa))}</div></div>
+          <div><div class="k">Marcador proyectado</div><div class="big" style="font-size:22px">${f1(m.proj_away)}–${f1(m.proj_home)}</div><div class="small muted">${esc(A)}–${esc(H)}</div></div>
+          <div><div class="k">${esc(H)} gana</div><div class="big">${pct(ph)}</div><div class="small muted">justa ${odds(american(ph))}</div></div></div>
+        <div class="kv"><div><div class="k">Margen ${esc(H)} (media)</div><div class="v">${sgn(mg.mean)}</div></div><div><div class="k">Mediana</div><div class="v">${sgn(mg.pct(.5))}</div></div><div><div class="k">P10 / P90</div><div class="v">${sgn(mg.pct(.1))} / ${sgn(mg.pct(.9))}</div></div>
+          <div><div class="k">P25 / P75</div><div class="v">${sgn(mg.pct(.25))} / ${sgn(mg.pct(.75))}</div></div><div><div class="k">P(tiempo extra)</div><div class="v">${pct(m.p_ot)}</div></div><div><div class="k">Incertidumbre</div><div class="v">±${(100 * se(ph)).toFixed(1)} pp</div></div></div>
+        <div class="small muted">Distribución del margen (${esc(H)} − ${esc(A)}); naranja = gana ${esc(H)}. Incertidumbre: error Monte Carlo al 95% (${n.toLocaleString("es-MX")} simulaciones). La calibración histórica del moneyline tiene un error medio de 4.2 puntos porcentuales (validación 2025-26), así que trata diferencias pequeñas con cautela. Los empates al final de la simulación se reparten mitad y mitad (el tiempo extra los resuelve).</div>
+        ${pmfSVG(gd.MARGIN, 0)}${marketCompare(d, "ML")}`;
+    } else if (tab === "SPREAD") {
+      body.innerHTML = `<div class="calc"><div class="row" role="group" aria-label="Equipo"><button class="chip on" data-ss="home">${esc(H)} (local)</button><button class="chip" data-ss="away">${esc(A)} (visitante)</button></div>
+        <div class="row"><label for="spl" class="small muted">Línea del equipo</label><input type="number" id="spl" step="0.5" inputmode="decimal"><span class="small muted">Negativa = favorito (da puntos). Positiva = no favorito (recibe puntos).</span></div><div id="spo"></div></div>
+        <div class="kv"><div><div class="k">Spread justo ${esc(H)}</div><div class="v">${sgn(m.fair_spread_home)}</div></div><div><div class="k">Margen medio ${esc(H)}</div><div class="v">${sgn(mg.mean)}</div></div><div><div class="k">Margen P10–P90</div><div class="v">${sgn(mg.pct(.1))} a ${sgn(mg.pct(.9))}</div></div></div>
+        ${marketCompare(d, "SPREAD")}`;
+      let side = "home";
+      const run = () => {
+        const L = parseFloat($("#spl").value); if (!isFinite(L)) { $("#spo").innerHTML = `<div class="small muted">Escribe una línea, por ejemplo -3.5 o +7.</div>`; return; }
+        const t = side === "home" ? H : A, o = side === "home" ? A : H;
+        const r = gameSide(gd, "SPREAD", side, L), ro = gameSide(gd, "SPREAD", side === "home" ? "away" : "home", -L);
+        const thr = side === "home" ? -L : L;
+        $("#spo").innerHTML = `<div class="small">${esc(t)} ${sgn(L)} cubre si ${side === "home" ? `${esc(H)} gana por más de ${f1(-L)}` : `${esc(H)} gana por menos de ${f1(L)}`}${L > 0 ? " o pierde" : ""}${Math.abs(L % 1) < 1e-9 ? "; empate exacto = push (se devuelve la apuesta)" : ""}. Equivale a ${esc(o)} ${sgn(-L)}.</div>
+          <div class="res3"><div><div class="k">${esc(t)} ${sgn(L)} cubre</div><div class="big">${pct(r.win)}</div><div class="small muted">justa ${odds(fairPush(r.win, r.push))}</div></div>
+          <div><div class="k">Push</div><div class="big">${pct(r.push)}</div><div class="small muted">${r.push > 0 ? "línea entera" : "—"}</div></div>
+          <div><div class="k">${esc(o)} ${sgn(-L)} cubre</div><div class="big">${pct(ro.win)}</div><div class="small muted">justa ${odds(fairPush(ro.win, ro.push))}</div></div></div>
+          ${pmfSVG(gd.MARGIN, thr)}<div class="small muted">Margen ${esc(H)} − ${esc(A)}; la línea punteada marca el umbral de cobertura.</div>`;
+      };
+      document.querySelectorAll("[data-ss]").forEach(b => b.onclick = () => { side = b.dataset.ss; document.querySelectorAll("[data-ss]").forEach(z => z.classList.toggle("on", z === b)); $("#spl").value = side === "home" ? m.fair_spread_home : -m.fair_spread_home; run(); });
+      $("#spl").value = m.fair_spread_home; $("#spl").oninput = run; run();
+    } else if (tab === "TOTAL" || tab === "TEAM_TOTAL") {
+      const team = tab === "TEAM_TOTAL";
+      body.innerHTML = `<div class="calc">${team ? `<div class="row" role="group" aria-label="Equipo"><button class="chip on" data-ts="home">${esc(H)}</button><button class="chip" data-ts="away">${esc(A)}</button></div>` : ""}
+        <div class="row"><label for="tol" class="small muted">Línea</label><input type="number" id="tol" step="0.5" min="0" inputmode="decimal"></div><div id="too"></div></div>${marketCompare(d, tab)}`;
+      let side = "home";
+      const dist = () => team ? (side === "home" ? gd.HOME_PTS : gd.AWAY_PTS) : gd.TOTAL;
+      const setDef = () => { const s = pmf(dist()); $("#tol").value = Math.floor(s.pct(.5)) + .5; };
+      const run = () => {
+        const L = parseFloat($("#tol").value), dd = dist(), s = pmf(dd);
+        if (!isFinite(L)) { $("#too").innerHTML = `<div class="small muted">Escribe una línea, por ejemplo 224.5.</div>`; return; }
+        const r = lineProbs(dd, L);
+        $("#too").innerHTML = `<div class="res3"><div><div class="k">Over ${L}</div><div class="big">${pct(r.over)}</div><div class="small muted">justa ${odds(fairPush(r.over, r.push))}</div></div>
+          <div><div class="k">Under ${L}</div><div class="big">${pct(r.under)}</div><div class="small muted">justa ${odds(fairPush(r.under, r.push))}</div></div>
+          <div><div class="k">Push</div><div class="big">${pct(r.push)}</div><div class="small muted">${r.push > 0 ? "línea entera" : "—"}</div></div></div>
+          ${pmfSVG(dd, L)}
+          <div class="kv"><div><div class="k">${team ? "Puntos " + esc(side === "home" ? H : A) : "Total proyectado"}</div><div class="v">${s.mean.toFixed(1)}</div></div><div><div class="k">Mediana</div><div class="v">${s.pct(.5).toFixed(1)}</div></div><div><div class="k">Línea justa</div><div class="v">${(Math.round(s.pct(.5) * 2) / 2).toFixed(1)}</div></div>
+          <div><div class="k">P10 / P90</div><div class="v">${s.pct(.1).toFixed(0)} / ${s.pct(.9).toFixed(0)}</div></div><div><div class="k">P25 / P75</div><div class="v">${s.pct(.25).toFixed(0)} / ${s.pct(.75).toFixed(0)}</div></div><div><div class="k">Simulaciones</div><div class="v">${dd.n.toLocaleString("es-MX")}</div></div></div>
+          <div class="small muted">Probabilidades exactas de la distribución simulada (sin aproximación normal). ${team ? "Los puntos de los jugadores en Props suman exactamente este total (mismas simulaciones)." : ""}</div>`;
+      };
+      document.querySelectorAll("[data-ts]").forEach(b => b.onclick = () => { side = b.dataset.ts; document.querySelectorAll("[data-ts]").forEach(z => z.classList.toggle("on", z === b)); setDef(); run(); });
+      $("#tol").oninput = run; setDef(); run();
+    }
+  };
+  document.querySelectorAll("[data-gt]").forEach(b => b.onclick = () => { tab = b.dataset.gt; document.querySelectorAll("[data-gt]").forEach(z => z.classList.toggle("on", z === b)); render(); });
+  const s = $("#gmsc"); if (s) s.onchange = () => { sc = +s.value; render(); };
+  render();
+}
+// Sportsbook comparison grouped by book, with a best-price filter
+function bookSection(d) {
+  const rows = oddsRows(d);
+  if (!rows.length) return `<div class="card"><h3>Comparación de sportsbooks</h3><div class="empty" style="padding:18px"><b>NO MARKET DATA</b><br><span class="small">${esc(oddsWhy())}</span></div></div>`;
+  return `<div class="card"><div class="section-title"><h3>Comparación de sportsbooks</h3><label class="small"><input type="checkbox" id="bestonly"> Solo mejor precio por línea</label></div>
+    <div class="bar"><select id="bkmk" aria-label="Mercado"><option value="">Todos los mercados</option>${[...new Set(rows.map(o => o.market))].map(k => `<option value="${k}">${esc(MKTALL(k))}</option>`).join("")}</select></div>
+    <div id="bkbody"></div><div class="small muted">Cuotas reales capturadas; "Modelo" es la probabilidad del snapshot congelado. NO BET significa que el sistema no recomienda la apuesta; pasa el cursor sobre la etiqueta para ver por qué.</div></div>`;
+}
+function bindBooks(d) {
+  if (!$("#bkbody")) return;
+  const run = () => {
+    let rows = oddsRows(d).filter(o => !$("#bkmk").value || o.market === $("#bkmk").value);
+    if ($("#bestonly").checked) {
+      const best = {}; rows.forEach(o => { const k = [o.market, o.player_id, o.team_side, o.side, o.line].join("|"); if (!best[k] || o.price > best[k].price) best[k] = o; });
+      rows = Object.values(best);
+    }
+    const books = [...new Set(rows.map(o => o.book))].sort();
+    $("#bkbody").innerHTML = books.map(b => `<h3 style="font-size:16px;margin-top:6px">${esc(BOOK_ES(b))}</h3><div class="table-wrap"><table><thead><tr><th>Mercado</th><th>Jugador/lado</th><th class="n">Cuota</th><th class="n">Modelo</th><th class="n">Justa</th><th class="n">EV</th><th class="n">Captura</th><th></th></tr></thead><tbody>
+      ${rows.filter(o => o.book === b).sort((x, y) => (x.kind > y.kind ? 1 : -1) || String(x.player).localeCompare(String(y.player))).map(o => `<tr${o.player_id ? ` class="click" data-oline="${esc(o.player_id)}|${esc(o.market)}|${o.line}"` : ""}><td>${esc(MKTALL(o.market))}</td><td>${o.player ? esc(o.player) + " · " : ""}${sideLabel(d, o)}</td><td class="n">${odds(o.price)}</td><td class="n">${pct(o.p_model)}</td><td class="n">${odds(o.fair_odds)}</td><td class="n">${o.ev == null ? "—" : sgn(100 * o.ev) + "%"}</td><td class="n small">${o.captured_at ? ago(o.captured_at) : "—"}</td><td>${decisionTag(o)}</td></tr>`).join("")}</tbody></table></div>`).join("") || `<div class="muted small">Sin líneas para este filtro.</div>`;
+    document.querySelectorAll("tr[data-oline]").forEach(r => r.onclick = () => { const [pid, mkk, ln] = r.dataset.oline.split("|"); const p = d.props.players.find(x => x.player_id === pid); if (p) playerDrawer(p, d, d.props.labels, { market: mkk, line: +ln }); });
+  };
+  $("#bkmk").onchange = run; $("#bestonly").onchange = run; run();
+}
+function oddsWhy() {
+  const L = S.meta?.sportsbook_lines, P = L?.providers || {};
+  const conf = Object.entries(P).filter(([, v]) => v.configured);
+  if (!conf.length) return "Todavía no hay una fuente de cuotas configurada. La integración está lista; empieza a capturar líneas reales en cuanto se agregue una llave gratuita como secreto del repositorio. Nunca se muestran cuotas de ejemplo.";
+  return "Fuente configurada, pero no hay líneas capturadas para este partido todavía (" + conf.map(([k, v]) => `${k}: ${v.state || "—"}${v.decision ? " · " + v.decision : ""}`).join("; ") + ").";
+}
+function playerLines(d, p) {
+  const rows = oddsRows(d).filter(o => o.player_id === p.player_id);
+  if (!rows.length) return `<div class="note" style="margin-top:14px"><b>NO MARKET DATA</b> — ${esc(oddsWhy())}</div>`;
+  return `<h3 style="margin-top:14px">Líneas reales</h3><div class="table-wrap"><table><thead><tr><th>Casa</th><th>Mercado</th><th>Lado</th><th class="n">Cuota</th><th class="n">Modelo</th><th class="n">Sin vig</th><th class="n">EV</th><th></th></tr></thead><tbody>
+    ${rows.map(o => `<tr class="click" data-pl="${esc(o.market)}|${o.line}"><td>${esc(BOOK_ES(o.book))}</td><td>${esc(o.market)}</td><td>${o.side === "over" ? "Over" : "Under"} ${o.line}</td><td class="n">${odds(o.price)}</td><td class="n">${pct(o.p_model)}</td><td class="n">${pct(o.no_vig)}</td><td class="n">${o.ev == null ? "—" : sgn(100 * o.ev) + "%"}</td><td>${decisionTag(o)}</td></tr>`).join("")}</tbody></table></div>
+    <div class="small muted">Toca una línea para llevarla a la calculadora.</div>`;
+}
+async function viewOpps() {
+  $("#app").innerHTML = `<div class="empty">Cargando…</div>`;
+  let O; try { O = await getJSON("data/opportunities.json"); } catch (e) { O = { rows: [], status: "NO_MARKET_DATA" }; }
+  const L = S.meta.sportsbook_lines || {};
+  const head = `<div class="section-title"><h2>Market Opportunities</h2><span class="small muted">Cuotas reales vs. probabilidad del modelo, ordenadas por valor verificable y calidad de datos</span></div>`;
+  const prov = Object.entries(L.providers || {}).map(([k, v]) => `<span class="tag ${v.configured ? (v.state === "OK" || v.state === "SKIPPED" ? "final" : "cond") : ""}">${esc(k)} · ${v.configured ? esc(v.state || "—") : "sin llave"}</span>`).join("");
+  const gate = L.market_gate && typeof L.market_gate === "object" ? Object.entries(L.market_gate).filter(([, v]) => v === "VALIDATED").map(([k]) => k) : [];
+  const rules = `<div class="note">Reglas: el modelo nunca usa las cuotas para cambiar su pronóstico. <b>VALOR</b> solo aparece si el EV conservador (probabilidad menos error de calibración y error Monte Carlo) es positivo <i>y</i> el mercado ya superó la validación contra líneas de cierre reales (log loss del modelo menor que el de la casa sin vig, n ≥ 300). Mercados validados hoy: <b>${gate.length ? gate.join(", ") : "ninguno"}</b>, así que todo aparece como NO BET hasta acumular evidencia.</div>`;
+  if (!O.rows.length) {
+    $("#app").innerHTML = `${head}<div class="empty"><b style="font-size:18px">NO MARKET DATA</b><br><span class="small">${esc(oddsWhy())}</span><div class="inj" style="justify-content:center;margin-top:10px">${prov}</div></div>${rules}`;
+    return;
+  }
+  const mkts = [...new Set(O.rows.map(o => o.market))], books = [...new Set(O.rows.map(o => o.book))];
+  $("#app").innerHTML = `${head}<div class="inj">${prov}</div>${rules}
+    <div class="bar"><select id="om"><option value="">Todos los mercados</option>${mkts.map(k => `<option>${esc(k)}</option>`).join("")}</select>
+      <select id="ob"><option value="">Todas las casas</option>${books.map(k => `<option value="${esc(k)}">${esc(BOOK_ES(k))}</option>`).join("")}</select>
+      <select id="od"><option value="">Todas las decisiones</option><option>VALUE</option><option>NO_BET</option></select></div>
+    <div class="table-wrap"><table><thead><tr><th>Partido</th><th>Jugador</th><th>Mercado</th><th>Casa</th><th class="n">Línea</th><th class="n">Cuota</th><th class="n">P modelo</th><th class="n">Edge</th><th class="n">EV</th><th class="n">EV cons.</th><th class="n">Edad</th><th>Disponibilidad</th></tr></thead><tbody id="obody"></tbody></table></div>
+    <div class="small muted">${O.n_total} lados con precio real · actualizado ${tfmt(O.generated_at)}</div>`;
+  const run = () => {
+    const r = O.rows.filter(o => (!$("#om").value || o.market === $("#om").value) && (!$("#ob").value || o.book === $("#ob").value) && (!$("#od").value || o.decision === $("#od").value));
+    $("#obody").innerHTML = r.slice(0, 400).map(o => `<tr class="click" data-game="${esc(o.game_id)}"><td>${esc(o.game)}<div class="small muted">${hfmt(o.tip_utc)}</div></td><td>${esc(o.player || "—")}</td><td>${esc(MKTALL(o.market))}${o.team_side ? " " + esc(o.team_side === "home" ? "local" : "visitante") : ""}</td><td>${esc(BOOK_ES(o.book))}</td>
+      <td class="n">${o.side === "home" ? "Local" : o.side === "away" ? "Visitante" : o.side === "over" ? "O" : "U"} ${o.line == null ? "" : (o.market === "SPREAD" ? sgn(o.line) : o.line)}</td><td class="n">${odds(o.price)}</td><td class="n">${pct(o.p_model)}</td><td class="n">${o.edge == null ? "—" : sgn(100 * o.edge) + "%"}</td><td class="n">${sgn(100 * o.ev)}%</td><td class="n">${sgn(100 * o.ev_conservative)}%</td><td class="n">${o.odds_age_min == null ? "—" : f0(o.odds_age_min) + " min"}</td><td>${decisionTag(o)}</td></tr>`).join("") || `<tr><td colspan="12" class="muted">Sin filas para este filtro.</td></tr>`;
+    document.querySelectorAll("#obody tr[data-game]").forEach(t => t.onclick = () => location.hash = "game-" + t.dataset.game);
+  };
+  ["om", "ob", "od"].forEach(i => $("#" + i).onchange = run); run();
 }
 
 function viewPlayers() {
@@ -627,6 +810,16 @@ function mktTable(bm) {
   return `<div class="table-wrap"><table><thead><tr><th>Mercado</th><th class="n">n</th><th class="n">Error medio</th><th class="n">Cobertura P10–P90</th></tr></thead><tbody>
     ${(bm || []).map(r => `<tr><td>${esc(r.market)}</td><td class="n">${r.n}</td><td class="n">${f1(r.mae)}</td><td class="n">${pct(r.cov80)}</td></tr>`).join("")}</tbody></table></div>`;
 }
+function gmVal(G) {
+  if (!G) return "";
+  const rows = Object.entries(G).map(([k, v]) => { const [n, , per] = k.split("|"); return `<tr><td>${esc(n)}${n === S.meta.champion ? ' <span class="tag win">Champion</span>' : ""}<div class="small muted">${esc(per)} · ${v.n_games} partidos</div></td>
+    <td class="n">${v.moneyline.brier.toFixed(4)}</td><td class="n">${v.moneyline.logloss.toFixed(4)}</td><td class="n">${v.moneyline.ece.toFixed(3)}</td><td class="n">${v.spread.margin_mae.toFixed(2)}</td><td class="n">${pct(v.spread.coverage80_margin)}</td>
+    <td class="n">${v.total.mae.toFixed(2)}</td><td class="n">${v.total.crps.toFixed(2)}</td><td class="n">${pct(v.total.coverage80)}</td><td class="n">${v.team_totals.mae_home.toFixed(1)} / ${v.team_totals.mae_away.toFixed(1)}</td><td class="n">${sgn(v.spread.favorite_margin_bias)}</td><td class="n">${sgn(v.total.bias)}</td></tr>`; }).join("");
+  return `<div class="card"><h3>Mercados de juego: Moneyline, Spread, Total, Team totals</h3>
+    <div class="small muted">Pronósticos pregame reconstruidos día por día con datos anteriores a cada fecha. Menor es mejor salvo coberturas (ideal 80%). Sesgo favorito &gt; 0: los favoritos ganaron por más de lo proyectado. Sesgo total &lt; 0: el modelo proyectó totales altos.</div>
+    <div class="table-wrap" style="border:0"><table><thead><tr><th>Modelo</th><th class="n">ML Brier</th><th class="n">ML LogLoss</th><th class="n">ML ECE</th><th class="n">Margen MAE</th><th class="n">Cob. 80% margen</th><th class="n">Total MAE</th><th class="n">Total CRPS</th><th class="n">Cob. 80% total</th><th class="n">Team total MAE L/V</th><th class="n">Sesgo favorito</th><th class="n">Sesgo total</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="small muted">Decisión: el Champion no cambia. Ningún challenger mejora de forma consistente en ambas temporadas; un ajuste de "afilado" del moneyline probado walk-forward no mejoró (ΔBrier −0.0017, IC 95% [−0.0050, +0.0018]).</div></div>`;
+}
 function viewResults() {
   const R = S.results, P = R.prospective, H = R.historical;
   const gr = (P.game_results || []).map(g => `<tr><td>${esc(g.away)} @ ${esc(g.home)}<div class="small muted">${esc(g.date_et)}</div></td><td class="n">${g.final_away}–${g.final_home}</td>
@@ -653,6 +846,7 @@ function viewResults() {
     <h3>Shadow (challengers, mismos partidos)</h3>
     <div class="two">${sh || `<div class="empty">Sin challengers liquidados.</div>`}</div>
     <h3>Validación histórica (walk-forward, sin fugas)</h3>
+    ${gmVal(H.game_markets_v8)}
     <div class="two">
       <div class="card"><h3>Calibración de probabilidades (BETA_MKT)</h3>
         <div class="small muted">${cal.rows.toLocaleString("es-MX")} probabilidades, ${cal.games} partidos, entrenamiento solo con fechas previas</div>
@@ -669,7 +863,7 @@ function viewResults() {
     </div>`;
 }
 
-const VIEWS = { overview: viewOverview, props: viewProps, markets: viewMarkets, players: viewPlayers, results: viewResults };
+const VIEWS = { overview: viewOverview, props: viewProps, markets: viewMarkets, opps: viewOpps, players: viewPlayers, results: viewResults };
 function route() {
   const h = location.hash.replace("#", "") || "overview";
   closeDrawer();

@@ -353,3 +353,19 @@ CREATE TRIGGER IF NOT EXISTS trg_pdist_immutable BEFORE UPDATE ON prop_distribut
 BEGIN SELECT RAISE(ABORT, 'prop_distributions are immutable'); END;
 CREATE TRIGGER IF NOT EXISTS trg_pdist_nodelete BEFORE DELETE ON prop_distributions
 BEGIN SELECT RAISE(ABORT, 'prop_distributions cannot be deleted'); END;
+
+-- V8: exact game-level Monte Carlo distributions (same simulations as the props)
+-- market: MARGIN (home - away), TOTAL, HOME_PTS, AWAY_PTS
+CREATE TABLE IF NOT EXISTS game_distributions (
+    snapshot_id TEXT NOT NULL REFERENCES forecast_snapshots(snapshot_id),
+    scenario    TEXT NOT NULL,
+    market      TEXT NOT NULL,
+    n           INTEGER NOT NULL,
+    lo          INTEGER NOT NULL,
+    counts      TEXT NOT NULL,
+    PRIMARY KEY (snapshot_id, scenario, market)
+);
+CREATE TRIGGER IF NOT EXISTS trg_gdist_immutable BEFORE UPDATE ON game_distributions
+BEGIN SELECT RAISE(ABORT, 'game_distributions are immutable'); END;
+CREATE TRIGGER IF NOT EXISTS trg_gdist_nodelete BEFORE DELETE ON game_distributions
+BEGIN SELECT RAISE(ABORT, 'game_distributions cannot be deleted'); END;
