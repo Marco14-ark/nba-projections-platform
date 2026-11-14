@@ -9,10 +9,10 @@ H = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/
      "Origin": "https://www.nba.com", "Referer": "https://www.nba.com/", "Accept": "application/json, text/plain, */*"}
 
 
-def get(url, binary=False, pause=0.4):
+def get(url, binary=False, pause=0.4, timeout=30):
     time.sleep(pause)
     try:
-        with urllib.request.urlopen(urllib.request.Request(url, headers=H), timeout=30) as r:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=H), timeout=timeout) as r:
             body = r.read()
             return r.status, body if binary else json.loads(body)
     except Exception as e:                       # noqa: BLE001
@@ -60,9 +60,13 @@ for g in games:
             finals.append({"gameId": g["gameId"], "actions": p["game"]["actions"], "box": b["game"]})
         else:
             missing.append(g["gameId"])
-rosters = []
+rosters, roster_status = [], None
 for tid in sorted({x for g in games for x in (g["h"], g["a"]) if x}):
-    st, j = get(f"https://stats.nba.com/stats/commonteamroster?LeagueID=00&Season=2026-27&TeamID={tid}")
+    st, j = get(f"https://stats.nba.com/stats/commonteamroster?LeagueID=00&Season=2026-27&TeamID={tid}", timeout=12)
+    if roster_status is None:
+        roster_status = st
+        if st != 200:          # stats.nba.com unreachable from this runner: stop instead of 30 timeouts
+            break
     if st == 200:
         rs = j["resultSets"][0]
         for row in rs["rowSet"]:
@@ -72,4 +76,4 @@ out = {"captured_at": now.isoformat(), "rosters": rosters, "injury_pdf_url": url
        "pregame_box": pre, "finals": finals, "missing_finals": missing, "live": live}
 json.dump(out, open(out_path, "w"))
 print(json.dumps({"games": len(games), "pdf": url, "pregame": len(pre), "finals": len(finals), "missing": missing,
-                  "live": len(live), "rosters": len(rosters)}))
+                  "live": len(live), "rosters": len(rosters), "roster_http": roster_status}))
