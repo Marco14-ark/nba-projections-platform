@@ -285,6 +285,45 @@ function winbar(ph, a, h) {
   <div class="bar small muted" style="justify-content:space-between"><span>${esc(a)} ${pct(1 - ph)}</span><span>${esc(h)} ${pct(ph)}</span></div>`;
 }
 
+const stCls = st => st === "OUT" || st === "SUSPENDED" || st === "NOT_WITH_TEAM" ? "out" : st === "DOUBTFUL" ? "out" : st === "PROBABLE" ? "final" : "cond";
+const CAT_ES = { CRITICAL: "Crítica", HIGH: "Alta", MEDIUM: "Media", LOW: "Baja" };
+function freshLine(d) {
+  const f = d.forecast, li = S.meta?.latest_injury_report;
+  const newer = li?.captured_at && f.injury_report?.captured_at && new Date(li.captured_at) - new Date(f.injury_report.captured_at) > 20 * 60000 && gameState(d) === "PREGAME";
+  return `<div class="small muted">Información usada en este pronóstico: snapshot congelado hace ${ago(f.created_at)} (${esc(WINDOW[f.window] || f.window)})${f.injury_report?.captured_at ? ` · reporte de lesiones capturado hace ${ago(f.injury_report.captured_at)}` : " · sin reporte oficial de lesiones aún"} · titulares ${f.starters.away.state === "CONFIRMED" && f.starters.home.state === "CONFIRMED" ? "confirmados" : "esperados por el modelo"}.</div>
+    ${newer ? `<div class="small warnline">Hay un reporte oficial de lesiones más reciente (${tfmt(li.captured_at)}) que el usado por este snapshot. El pronóstico congelado no cambia; la siguiente ventana lo incorpora.</div>` : ""}`;
+}
+function absencesCard(d) {
+  const f = d.forecast, IA = f.important_absences;
+  if (!IA) return null;
+  const item = (o, tri, side) => {
+    const ro = o.role;
+    const role = ro ? `${f1(ro.min)} min habituales${ro.start_rate >= .6 ? " · titular" : ro.start_rate > 0 ? ` · titular en ${Math.round(ro.start_rate * 100)}%` : " · suplente"} · uso ${pct(ro.usage)} · ${f1(ro.pts)} pts` : "sin partidos recientes con el equipo";
+    const fresh = o.long_absence ? `Fuera desde hace ${o.games_missed ?? "varios"} partidos: ya reflejado en la rotación` : o.games_missed > 0 ? `Baja reciente (no jugó los últimos ${o.games_missed})` : "Baja nueva para este partido";
+    const se = o.scenario_effect ? `<div class="small">Impacto calculado: P(gana ${esc(tri)}) <b class="num">${pct(o.scenario_effect.team_win_if_plays)}</b> si juega · <b class="num">${pct(o.scenario_effect.team_win_if_out)}</b> si no juega</div>` : "";
+    return `<div style="border-top:1px solid #1a2433;padding-top:8px;display:grid;gap:3px">
+      <div class="bar"><b>${esc(o.player)}</b><span class="tag ${stCls(o.status)}">${esc(STATUS_ES[o.status] || o.status)}</span><span class="tag ${o.category === "CRITICAL" ? "out" : o.category === "HIGH" ? "win" : ""}">Impacto ${esc(CAT_ES[o.category])}</span></div>
+      <div class="small muted">${role} · ${fresh}</div>${se}</div>`;
+  };
+  const teamBlock = side => {
+    const list = (IA[side] || []).filter(o => o.show_main);
+    if (!list.length) return "";
+    const bm = {}; list.forEach(o => (o.beneficiaries || []).forEach(b => { if (!bm[b.player_id] || bm[b.player_id].delta_min < b.delta_min) bm[b.player_id] = b; }));
+    const bens = Object.values(bm).sort((a, b) => b.delta_min - a.delta_min).slice(0, 4);
+    return `<div style="display:grid;gap:6px"><div class="small" style="font-family:var(--font-display);font-size:16px;letter-spacing:.04em">${esc(d[side].city)} ${esc(d[side].name)}</div>
+      ${list.map(o => item(o, d[side].tri, side)).join("")}
+      ${bens.length ? `<div class="small" style="background:var(--panel-2);border-radius:8px;padding:6px 9px">Quién gana minutos según el modelo: ${bens.map(b => `<a href="#player-${esc(b.player_id)}">${esc(b.player)}</a> <span class="num">+${f1(b.delta_min)} min</span>${b.delta_pts > 0.4 ? ` <span class="num muted">(+${f1(b.delta_pts)} pts)</span>` : ""}`).join(" · ")} <span class="muted">(vs. su promedio reciente)</span></div>` : ""}</div>`;
+  };
+  const all = ["away", "home"].flatMap(s => (IA[s] || []).map(o => ({ o, tri: d[s].tri, s })));
+  const main = all.filter(x => x.o.show_main), longImp = all.filter(x => x.o.long_absence && ["CRITICAL", "HIGH"].includes(x.o.category));
+  const rest = all.filter(x => !x.o.show_main && !(x.o.long_absence && ["CRITICAL", "HIGH"].includes(x.o.category)));
+  return `<div class="card"><div class="section-title"><h3>Ausencias importantes</h3><span class="small muted">Ordenadas por impacto (${esc(f.impact_model)})</span></div>
+    ${main.length ? `<div class="two">${teamBlock("away")}${teamBlock("home")}</div>` : `<div class="small muted">${f.flag === "PARTIAL_DATA" ? "Todavía no hay reporte oficial para este partido." : "Ninguna baja relevante para este partido."}</div>`}
+    ${longImp.length ? `<div class="small muted">Ausencias prolongadas ya reflejadas en la rotación: ${longImp.map(x => `${esc(x.o.player)} (${esc(x.tri)}, ${x.o.games_missed} partidos)`).join(", ")}</div>` : ""}
+    ${rest.length ? `<details><summary class="small" style="cursor:pointer">Otras bajas del reporte oficial (${rest.length})</summary><div class="small muted">Jugadores con participación marginal o sin rol reciente. El modelo sí los toma en cuenta.</div>
+      ${rest.map(x => `<div class="small">${esc(x.o.player)} · ${esc(x.tri)} · ${esc(STATUS_ES[x.o.status] || x.o.status)}${x.o.role ? ` · ${f1(x.o.role.min)} min habituales` : ""}${x.o.reason ? ` · ${esc(x.o.reason)}` : ""}</div>`).join("")}</details>` : ""}
+    ${f.injury_report?.injury_report_url ? `<div class="small muted">Fuente: <a href="${esc(f.injury_report.injury_report_url)}" rel="noopener">reporte oficial de lesiones de la NBA</a>, capturado ${tfmt(f.injury_report.captured_at)}</div>` : ""}</div>`;
+}
 function gameCard(g) {
   const f = g.forecast;
   const tip = `${stateBadge(g)}<span class="tag">${hfmt(g.tip_utc)}</span>`;
@@ -306,7 +345,10 @@ function gameCard(g) {
         <span>${s.conditions.map(c => `${esc(c.player)} ${c.state === "OUT" ? "<b style='color:var(--bad)'>no juega</b>" : "<b style='color:var(--good)'>juega</b>"}`).join(" · ") || "Base"}</span>
         <span class="num">${f1(s.proj_away)}–${f1(s.proj_home)} · ${esc(g.home.tri)} ${pct(s.p_home_win)}</span></div>`).join("");
   }
-  const injs = f ? [...(f.injuries.away || []).map(i => ({ ...i, t: g.away.tri })), ...(f.injuries.home || []).map(i => ({ ...i, t: g.home.tri }))] : [];
+  const IA = f?.important_absences;
+  const injs = f ? (IA ? [...(IA.away || []).map(i => ({ ...i, t: g.away.tri })), ...(IA.home || []).map(i => ({ ...i, t: g.home.tri }))]
+    : [...(f.injuries.away || []).map(i => ({ ...i, t: g.away.tri })), ...(f.injuries.home || []).map(i => ({ ...i, t: g.home.tri }))]) : [];
+  const nOther = f && IA ? ((f.injuries.away || []).length + (f.injuries.home || []).length - injs.length) : 0;
   const keyp = f ? ["away", "home"].map(s => (f.key_players[s] || []).map(p => esc(p.player.split(" ").slice(-1)[0]) + ` <span class="num muted">${f1(p.pts)}</span>`).join(", ")).filter(Boolean) : [];
   return `<article class="card click" data-game="${g.game_id}" tabindex="0" aria-label="${esc(g.away.tri)} en ${esc(g.home.tri)}">
     <div class="game-head"><div class="bar">${tip}${windowTag(f)}</div>${pubTag(f)}</div>
@@ -319,7 +361,8 @@ function gameCard(g) {
     ${f && f.late_status_conflicts?.length ? `<div class="small warnline">Reporte oficial posterior al snapshot: ${f.late_status_conflicts.map(x => esc(x.player) + " " + esc(STATUS_ES[x.status] || x.status)).join(", ")}.</div>` : ""}
     ${f ? `<div class="small"><span class="muted">Titulares:</span> ${f.starters.away.state === "CONFIRMED" ? "confirmados" : "esperados"} / ${f.starters.home.state === "CONFIRMED" ? "confirmados" : "esperados"}</div>` : ""}
     ${keyp.length ? `<div class="small"><span class="muted">Clave (PTS):</span> ${keyp.join(" · ")}</div>` : ""}
-    ${injs.length ? `<div class="inj">${injs.slice(0, 6).map(i => `<span class="tag ${i.status === "OUT" ? "out" : "cond"}">${esc(i.t)} ${esc(i.player)} · ${esc(STATUS_ES[i.status] || i.status)}</span>`).join("")}${injs.length > 6 ? `<span class="tag">+${injs.length - 6}</span>` : ""}</div>` : (f ? `<div class="small muted">${f.flag === "PARTIAL_DATA" ? "Aún no hay reporte oficial de lesiones para este partido." : "Sin lesiones reportadas."}</div>` : "")}
+    ${injs.length ? `<div class="small muted">Ausencias importantes</div><div class="inj">${injs.slice(0, 6).map(i => `<span class="tag ${stCls(i.status)}">${i.category === "CRITICAL" ? "★ " : ""}${esc(i.t)} ${esc(i.player)} · ${esc(STATUS_ES[i.status] || i.status)}</span>`).join("")}${injs.length > 6 ? `<span class="tag">+${injs.length - 6}</span>` : ""}</div>` : (f ? `<div class="small muted">${f.flag === "PARTIAL_DATA" ? "Aún no hay reporte oficial de lesiones para este partido." : IA ? "Sin ausencias importantes." : "Sin lesiones reportadas."}</div>` : "")}
+    ${nOther > 0 ? `<div class="small muted">${nOther} baja${nOther > 1 ? "s" : ""} menor${nOther > 1 ? "es" : ""} o ya incorporada${nOther > 1 ? "s" : ""} en la rotación (ver partido)</div>` : ""}
   </article>`;
 }
 
@@ -538,18 +581,20 @@ async function viewGame(gid) {
     <div class="bar">${stateBadge(d)}${windowTag(f)}${pubTag(f)}${f.flag === "PARTIAL_DATA" ? `<span class="tag cond">Datos parciales</span>` : ""}</div>
     ${liveLine(d)}${gameState(d) !== "PREGAME" ? `<div class="note">Las proyecciones de esta página son el pronóstico pregame congelado a las ${tfmt(f.created_at)}. No hay modelo durante el partido; el marcador real se muestra aparte.</div>` : ""}${overdue(d)}
     ${f.late_status_conflicts?.length ? `<div class="note warn">Reporte oficial posterior al snapshot: ${f.late_status_conflicts.map(x => esc(x.player) + " " + esc(STATUS_ES[x.status] || x.status) + " (" + tfmt(x.report_ts) + ")").join(", ")}. Las proyecciones afectadas se recalculan en la siguiente ventana.</div>` : ""}
+    ${freshLine(d)}
     <details class="tech"><summary>Detalles técnicos del snapshot</summary>
       <div>Snapshot ${esc(f.snapshot_id)} · creado ${esc(f.created_at)} · ${esc(f.minutes_before_tip)} min antes del inicio · hash de insumos ${esc(f.input_hash)} · modelo ${esc(f.model)} ${esc(f.model_version)} · stack ${esc(f.stack)} · calibración ${esc(f.calibration)} · publicación ${esc(f.publication.GAME)}${f.data_flags?.length ? " · banderas: " + esc(f.data_flags.join(", ")) : ""}</div></details>
     ${mk.length > 1 ? `<div class="note warn">Hay jugadores en duda sin probabilidad justificada para esta ventana. El modelo publica un pronóstico separado para cada escenario y, al terminar el partido, solo se evalúa el escenario que ocurrió.</div>` : ""}
     <div class="two">${scen}</div>
+    ${absencesCard(d) || ""}
     ${gameMarketsSection(d)}
     ${bookSection(d)}
     <div class="two">
       <div class="card"><h3>Titulares</h3>${["away", "home"].map(s => `<div><div class="small muted">${esc(d[s].tri)} · ${f.starters[s].state === "CONFIRMED" ? "confirmados" : "esperados por el modelo"}</div><div>${f.starters[s].players.map(p => `<a href="#player-${esc(p.player_id)}">${esc(p.player)}</a>`).join(", ")}</div></div>`).join("")}</div>
-      <div class="card"><h3>Lesiones</h3>
+      ${absencesCard(d) ? "" : `<div class="card"><h3>Lesiones</h3>
         ${inj("away") || inj("home") ? `<div class="table-wrap" style="border:0"><table><tbody>${inj("away")}${inj("home")}</tbody></table></div>` : `<div class="muted small">${f.flag === "PARTIAL_DATA" ? "Todavía no hay reporte oficial para este partido." : "Sin jugadores en el reporte oficial."}</div>`}
         ${f.injury_report?.injury_report_url ? `<div class="small muted">Fuente: <a href="${esc(f.injury_report.injury_report_url)}" rel="noopener">reporte oficial de lesiones de la NBA</a>, capturado ${tfmt(f.injury_report.captured_at)}</div>` : ""}
-      </div>
+      </div>`}
     </div>
     <div class="card"><h3>Alternativas del modelo</h3>
       <div class="two">
@@ -810,6 +855,33 @@ function mktTable(bm) {
   return `<div class="table-wrap"><table><thead><tr><th>Mercado</th><th class="n">n</th><th class="n">Error medio</th><th class="n">Cobertura P10–P90</th></tr></thead><tbody>
     ${(bm || []).map(r => `<tr><td>${esc(r.market)}</td><td class="n">${r.n}</td><td class="n">${f1(r.mae)}</td><td class="n">${pct(r.cov80)}</td></tr>`).join("")}</tbody></table></div>`;
 }
+function v9Card(V) {
+  if (!V) return "";
+  const T = V.totals_decomposition, C = V.game_challengers, Dp = V.props_error_decomposition, M = V.minutes_audit;
+  const tot = Object.entries(T).map(([s, t]) => `<tr><td>${esc(s)}</td><td class="n">${t.n}</td><td class="n">${sgn(t.total_bias_pred_minus_actual)}</td><td class="n">${f1(t.pace_pred_mean)} / ${f1(t.pace_actual_mean_per48)}</td><td class="n">${sgn(t.bias_points_from_possessions)}</td><td class="n">${sgn(t.bias_points_from_efficiency)}</td></tr>`).join("");
+  const ch = Object.entries(C).flatMap(([n, v]) => Object.entries(v).map(([s, x]) => `<tr><td>${esc(n)}</td><td>${esc(s)}</td><td class="n">${f1(x.mae_champion)}</td><td class="n">${f1(x.mae_challenger)}</td><td class="n">${x.gain_ci95[0] > 0 ? "<b style='color:var(--good)'>" : ""}[${x.gain_ci95[0]}, ${x.gain_ci95[1]}]${x.gain_ci95[0] > 0 ? "</b>" : ""}</td></tr>`)).join("");
+  const dec = Object.entries(Dp).map(([s, v]) => { const d = v.PTS.decomposition_share; return `<tr><td>${esc(s)}</td><td class="n">${f1(v.PTS.mae_champion)}</td>${Object.values(d).map(x => `<td class="n">${pct(x)}</td>`).join("")}</tr>`; }).join("");
+  const s27 = M["2026-27"] || {};
+  const mins = Object.entries(s27).filter(([k]) => k !== "todos").map(([k, v]) => `<tr><td>${esc(k)}</td><td class="n">${v.n}</td><td class="n">${f1(v.mae)}</td><td class="n">${sgn(v.bias_pred_minus_actual)}</td></tr>`).join("");
+  return `<div class="card"><h3>Investigación V9: de dónde viene el error</h3>
+    <div class="small muted">Backtests reconstruidos (no prospectivos). Los resultados reales solo se usan para medir el error.</div>
+    <div class="two">
+      <div><div class="small"><b>Total de puntos: posesiones contra eficiencia</b></div><div class="table-wrap" style="border:0"><table><thead><tr><th>Temporada</th><th class="n">n</th><th class="n">Sesgo total</th><th class="n">Ritmo pred/real</th><th class="n">Por posesiones</th><th class="n">Por eficiencia</th></tr></thead><tbody>${tot}</tbody></table></div>
+        <div class="small muted">El exceso de 2026-27 viene casi todo del ritmo: el modelo esperaba ~1.9 posesiones más por partido. Causa: el ajuste de entorno de liga se aplica dos veces, y la primera semana de la temporada tuvo un ritmo inusualmente alto.</div></div>
+      <div><div class="small"><b>Puntos de jugador: reparto del error (MAE)</b></div><div class="table-wrap" style="border:0"><table><thead><tr><th>Temporada</th><th class="n">MAE</th><th class="n">Minutos</th><th class="n">Volumen de tiros</th><th class="n">Eficiencia</th><th class="n">Azar del tiro</th></tr></thead><tbody>${dec}</tbody></table></div>
+        <div class="small muted">Más de la mitad del error es el azar de meter o fallar tiros, que ningún modelo puede predecir. Lo mejorable está en los minutos y el volumen de tiros.</div></div>
+    </div>
+    <div class="two">
+      <div><div class="small"><b>Challengers de mercados de juego (ganancia de MAE, IC 95%)</b></div><div class="table-wrap" style="border:0"><table><thead><tr><th>Challenger</th><th>Temporada</th><th class="n">Champion</th><th class="n">Challenger</th><th class="n">Ganancia</th></tr></thead><tbody>${ch}</tbody></table></div>
+        <div class="small muted">Ninguno mejora de forma significativa en ambas temporadas. PACE_NO_DOUBLE_COUNT corrige la causa del sesgo y no empeora nada, así que corre en shadow como STACK_V5_PACE para acumular evidencia prospectiva.</div></div>
+      <div><div class="small"><b>Minutos por perfil, 2026-27</b></div><div class="table-wrap" style="border:0"><table><thead><tr><th>Perfil</th><th class="n">n</th><th class="n">MAE</th><th class="n">Sesgo</th></tr></thead><tbody>${mins}</tbody></table></div>
+        <div class="small muted">Sesgo &gt; 0 = el modelo dio más minutos de los jugados. Los errores grandes se concentran en los jugadores que regresan de lesión, el sexto hombre y los titulares en blowouts.</div></div>
+    </div>
+    ${V.minutes_challenger_profile_recal ? `<div class="small"><b>Challenger de minutos MINUTES_PROFILE_RECAL</b> (recalibración por perfil aprendida solo con fechas previas)</div>
+    <div class="table-wrap" style="border:0"><table><thead><tr><th>Perfil</th>${Object.keys(V.minutes_challenger_profile_recal).map(s => `<th class="n">${esc(s)}: MAE champion → challenger [IC ganancia]</th>`).join("")}</tr></thead><tbody>
+    ${Object.keys(Object.values(V.minutes_challenger_profile_recal)[0]).map(pf => `<tr><td>${esc(pf)}</td>${Object.values(V.minutes_challenger_profile_recal).map(x => { const v = x[pf]; return `<td class="n">${f1(v.mae_champion)} → ${f1(v.mae_challenger)} <span class="${v.gain_ci95[0] > 0 ? "" : "muted"}">[${v.gain_ci95[0]}, ${v.gain_ci95[1]}]</span></td>`; }).join("")}</tr>`).join("")}</tbody></table></div>
+    <div class="small muted">Para el sexto hombre mejora con significancia en ambas temporadas; para quienes regresan de lesión mejora, pero no es significativo. El Champion no cambia: el siguiente paso es integrarlo al motor de minutos como shadow, reasignando los minutos que se quitan.</div>` : ""}</div>`;
+}
 function gmVal(G) {
   if (!G) return "";
   const rows = Object.entries(G).map(([k, v]) => { const [n, , per] = k.split("|"); return `<tr><td>${esc(n)}${n === S.meta.champion ? ' <span class="tag win">Champion</span>' : ""}<div class="small muted">${esc(per)} · ${v.n_games} partidos</div></td>
@@ -847,6 +919,7 @@ function viewResults() {
     <div class="two">${sh || `<div class="empty">Sin challengers liquidados.</div>`}</div>
     <h3>Validación histórica (walk-forward, sin fugas)</h3>
     ${gmVal(H.game_markets_v8)}
+    ${v9Card(H.v9_research)}
     <div class="two">
       <div class="card"><h3>Calibración de probabilidades (BETA_MKT)</h3>
         <div class="small muted">${cal.rows.toLocaleString("es-MX")} probabilidades, ${cal.games} partidos, entrenamiento solo con fechas previas</div>

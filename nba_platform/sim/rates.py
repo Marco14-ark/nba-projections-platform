@@ -53,9 +53,15 @@ class RatesConfig:
     k_def_shoot_games: float = 40.0
     league_env: bool = True       # 1.1.0: current-season league pace/efficiency vs training average
     k_env_games: float = 60.0     # shrinkage (games) of the current-season league ratio toward 1
+    # V9 challenger: "league" = champion (lg * h/lg * a/lg * env_pace); "team_mean" = h * a / mean(team
+    # factors), no env_pace (team factors already carry the current season through recency weights).
+    pace_norm: str = "league"
 
     def digest(self) -> str:
-        return sha(asdict(self))
+        d = asdict(self)
+        if d["pace_norm"] == "league":          # keep the champion fingerprint byte-identical
+            del d["pace_norm"]
+        return sha(d)
 
 
 def _season_start(d: str) -> int:
@@ -283,6 +289,9 @@ class OpportunityRates:
                 "d_tov": 1.0, "games": 0}
 
     def expected_pace(self, home: int, away: int) -> float:
+        if self.cfg.pace_norm == "team_mean" and self.T:
+            lgw = float(np.mean([v["pace48"] for v in self.T.values()]))
+            return self.team(home)["pace48"] * self.team(away)["pace48"] / lgw
         lg = self.LT["pace48"]
         return lg * (self.team(home)["pace48"] / lg) * (self.team(away)["pace48"] / lg) * getattr(self, "env_pace", 1.0)
 

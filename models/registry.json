@@ -707,6 +707,14 @@
    "db": "data/live/shadow_STACK_V4_BLOWOUT.db"
   },
   {
+   "name": "STACK_V5_PACE",
+   "role": "SHADOW",
+   "since": "2026-11-14",
+   "components": "minutes 1.2.0 + rates 1.1.0 (pace_norm=team_mean) + rating V2 blend + BETA_MKT",
+   "db": "data/live/shadow_STACK_V5_PACE.db",
+   "evidence": "V9 research: total bias 2025-26 +0.96 -> -0.26, 2026-27 +3.48 -> +1.87; MAE gain +0.02 [-0.11,+0.16] / +0.28 [-0.05,+0.58] \u2014 not significant, so SHADOW only"
+  },
+  {
    "name": "STACK_V2_ENV",
    "role": "CHAMPION",
    "reconfirmed": "2026-11-14",

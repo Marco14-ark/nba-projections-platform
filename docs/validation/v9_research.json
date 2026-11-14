@@ -1,0 +1,590 @@
+{
+ "note": "Backtests reconstruidos walk-forward (no prospectivos). Resultados reales usados solo para medir error.",
+ "minutes_audit": {
+  "2025-26": {
+   "pocas muestras con el equipo (<=25 juegos)": {
+    "n": 1585,
+    "mae": 5.28,
+    "bias_pred_minus_actual": -0.27,
+    "extreme_err_gt15_share": 0.042,
+    "share_of_total_abs_error": 0.219
+   },
+   "regresa de lesión": {
+    "n": 365,
+    "mae": 5.76,
+    "bias_pred_minus_actual": 0.91,
+    "extreme_err_gt15_share": 0.038,
+    "share_of_total_abs_error": 0.055
+   },
+   "rotación variable (<15 min)": {
+    "n": 979,
+    "mae": 5.05,
+    "bias_pred_minus_actual": -0.82,
+    "extreme_err_gt15_share": 0.025,
+    "share_of_total_abs_error": 0.129
+   },
+   "sexto hombre": {
+    "n": 552,
+    "mae": 5.05,
+    "bias_pred_minus_actual": 1.68,
+    "extreme_err_gt15_share": 0.027,
+    "share_of_total_abs_error": 0.073
+   },
+   "suplente habitual (>=15 min)": {
+    "n": 1306,
+    "mae": 5.05,
+    "bias_pred_minus_actual": -0.27,
+    "extreme_err_gt15_share": 0.027,
+    "share_of_total_abs_error": 0.173
+   },
+   "titular": {
+    "n": 3050,
+    "mae": 4.4,
+    "bias_pred_minus_actual": 0.35,
+    "extreme_err_gt15_share": 0.027,
+    "share_of_total_abs_error": 0.351
+   },
+   "partidos con blowout (|margen|>=20)": {
+    "n": 1835,
+    "mae": 5.02,
+    "bias_pred_minus_actual": 0.85,
+    "extreme_err_gt15_share": 0.036,
+    "share_of_total_abs_error": 0.241
+   },
+   "todos": {
+    "n": 7837,
+    "mae": 4.88,
+    "bias_pred_minus_actual": 0.1,
+    "extreme_err_gt15_share": 0.03,
+    "share_of_total_abs_error": 1.0
+   },
+   "titulares en blowout": {
+    "n": 706,
+    "mae": 4.77,
+    "bias_pred_minus_actual": 2.89
+   },
+   "suplentes en blowout": {
+    "n": 1129,
+    "mae": 5.18,
+    "bias_pred_minus_actual": -0.43
+   }
+  },
+  "2026-27": {
+   "pocas muestras con el equipo (<=25 juegos)": {
+    "n": 1016,
+    "mae": 4.97,
+    "bias_pred_minus_actual": -0.15,
+    "extreme_err_gt15_share": 0.031,
+    "share_of_total_abs_error": 0.366
+   },
+   "regresa de lesión": {
+    "n": 89,
+    "mae": 8.03,
+    "bias_pred_minus_actual": 6.58,
+    "extreme_err_gt15_share": 0.101,
+    "share_of_total_abs_error": 0.052
+   },
+   "rotación variable (<15 min)": {
+    "n": 297,
+    "mae": 4.94,
+    "bias_pred_minus_actual": -1.7,
+    "extreme_err_gt15_share": 0.024,
+    "share_of_total_abs_error": 0.106
+   },
+   "sexto hombre": {
+    "n": 168,
+    "mae": 6.38,
+    "bias_pred_minus_actual": 4.17,
+    "extreme_err_gt15_share": 0.054,
+    "share_of_total_abs_error": 0.077
+   },
+   "suplente habitual (>=15 min)": {
+    "n": 321,
+    "mae": 4.97,
+    "bias_pred_minus_actual": 0.05,
+    "extreme_err_gt15_share": 0.025,
+    "share_of_total_abs_error": 0.115
+   },
+   "titular": {
+    "n": 850,
+    "mae": 4.61,
+    "bias_pred_minus_actual": -0.42,
+    "extreme_err_gt15_share": 0.027,
+    "share_of_total_abs_error": 0.284
+   },
+   "partidos con blowout (|margen|>=20)": {
+    "n": 789,
+    "mae": 5.15,
+    "bias_pred_minus_actual": 1.25,
+    "extreme_err_gt15_share": 0.038,
+    "share_of_total_abs_error": 0.294
+   },
+   "todos": {
+    "n": 2741,
+    "mae": 5.04,
+    "bias_pred_minus_actual": 0.11,
+    "extreme_err_gt15_share": 0.032,
+    "share_of_total_abs_error": 1.0
+   },
+   "titulares en blowout": {
+    "n": 293,
+    "mae": 4.78,
+    "bias_pred_minus_actual": 3.0
+   },
+   "suplentes en blowout": {
+    "n": 496,
+    "mae": 5.37,
+    "bias_pred_minus_actual": 0.21
+   }
+  }
+ },
+ "minutes_challenger_profile_recal": {
+  "2025-26": {
+   "regresa de lesión": {
+    "n": 365,
+    "mae_champion": 5.76,
+    "mae_challenger": 5.65,
+    "gain_ci95": [
+     -0.0,
+     0.23
+    ]
+   },
+   "sexto hombre": {
+    "n": 552,
+    "mae_champion": 5.05,
+    "mae_challenger": 4.92,
+    "gain_ci95": [
+     0.02,
+     0.25
+    ]
+   },
+   "titular": {
+    "n": 3050,
+    "mae_champion": 4.4,
+    "mae_challenger": 4.4,
+    "gain_ci95": [
+     -0.01,
+     0.01
+    ]
+   },
+   "suplente habitual (>=15 min)": {
+    "n": 1306,
+    "mae_champion": 5.05,
+    "mae_challenger": 5.06,
+    "gain_ci95": [
+     -0.03,
+     0.02
+    ]
+   }
+  },
+  "2026-27": {
+   "regresa de lesión": {
+    "n": 89,
+    "mae_champion": 8.03,
+    "mae_challenger": 6.79,
+    "gain_ci95": [
+     -0.04,
+     2.49
+    ]
+   },
+   "sexto hombre": {
+    "n": 168,
+    "mae_champion": 6.38,
+    "mae_challenger": 5.54,
+    "gain_ci95": [
+     0.3,
+     1.36
+    ]
+   },
+   "titular": {
+    "n": 850,
+    "mae_champion": 4.61,
+    "mae_challenger": 4.63,
+    "gain_ci95": [
+     -0.06,
+     0.02
+    ]
+   },
+   "suplente habitual (>=15 min)": {
+    "n": 321,
+    "mae_champion": 4.97,
+    "mae_challenger": 4.98,
+    "gain_ci95": [
+     -0.03,
+     0.01
+    ]
+   }
+  }
+ },
+ "props_error_decomposition": {
+  "2025-26": {
+   "PTS": {
+    "n": 7787,
+    "mae_champion": 4.546,
+    "mae_oracle_minutes": 3.726,
+    "share_of_error_from_minutes": 0.18,
+    "mae_oracle_minutes_and_attempts": 2.555,
+    "expected_mae_pure_shooting_luck": 2.584,
+    "decomposition_share": {
+     "minutes": 0.18,
+     "opportunities (shot volume given minutes)": 0.257,
+     "efficiency skill misestimation": 0.0,
+     "unpredictable shooting variance": 0.562
+    }
+   },
+   "REB": {
+    "n": 7787,
+    "mae_champion": 1.893,
+    "mae_oracle_minutes": 1.609,
+    "share_of_error_from_minutes": 0.15
+   },
+   "AST": {
+    "n": 7787,
+    "mae_champion": 1.37,
+    "mae_oracle_minutes": 1.236,
+    "share_of_error_from_minutes": 0.098
+   },
+   "3PM": {
+    "n": 7787,
+    "mae_champion": 0.906,
+    "mae_oracle_minutes": 0.832,
+    "share_of_error_from_minutes": 0.081
+   }
+  },
+  "2026-27": {
+   "PTS": {
+    "n": 2723,
+    "mae_champion": 4.491,
+    "mae_oracle_minutes": 3.616,
+    "share_of_error_from_minutes": 0.195,
+    "mae_oracle_minutes_and_attempts": 2.49,
+    "expected_mae_pure_shooting_luck": 2.482,
+    "decomposition_share": {
+     "minutes": 0.195,
+     "opportunities (shot volume given minutes)": 0.251,
+     "efficiency skill misestimation": 0.002,
+     "unpredictable shooting variance": 0.553
+    }
+   },
+   "REB": {
+    "n": 2723,
+    "mae_champion": 1.855,
+    "mae_oracle_minutes": 1.573,
+    "share_of_error_from_minutes": 0.152
+   },
+   "AST": {
+    "n": 2723,
+    "mae_champion": 1.329,
+    "mae_oracle_minutes": 1.199,
+    "share_of_error_from_minutes": 0.098
+   },
+   "3PM": {
+    "n": 2723,
+    "mae_champion": 0.909,
+    "mae_oracle_minutes": 0.822,
+    "share_of_error_from_minutes": 0.097
+   }
+  }
+ },
+ "injury_context": {
+  "2025-26": {
+   "equipo con >=60 min de rotación ausentes": {
+    "n_player_games": 726,
+    "minutes_bias_pred_minus_actual": 0.86,
+    "minutes_mae": 6.74,
+    "pts_bias": 0.69,
+    "pts_mae": 5.06
+   },
+   "equipo con 25-60 min ausentes": {
+    "n_player_games": 2479,
+    "minutes_bias_pred_minus_actual": 0.24,
+    "minutes_mae": 5.14,
+    "pts_bias": 0.14,
+    "pts_mae": 4.6
+   },
+   "equipo sin ausencias relevantes (<25)": {
+    "n_player_games": 4632,
+    "minutes_bias_pred_minus_actual": -0.1,
+    "minutes_mae": 4.44,
+    "pts_bias": -0.02,
+    "pts_mae": 4.41
+   }
+  },
+  "2026-27": {
+   "equipo con >=60 min de rotación ausentes": {
+    "n_player_games": 170,
+    "minutes_bias_pred_minus_actual": -0.55,
+    "minutes_mae": 6.24,
+    "pts_bias": 0.16,
+    "pts_mae": 4.94
+   },
+   "equipo con 25-60 min ausentes": {
+    "n_player_games": 745,
+    "minutes_bias_pred_minus_actual": 0.3,
+    "minutes_mae": 5.25,
+    "pts_bias": 0.4,
+    "pts_mae": 4.44
+   },
+   "equipo sin ausencias relevantes (<25)": {
+    "n_player_games": 1826,
+    "minutes_bias_pred_minus_actual": 0.09,
+    "minutes_mae": 4.85,
+    "pts_bias": 0.15,
+    "pts_mae": 4.45
+   }
+  }
+ },
+ "totals_decomposition": {
+  "2025-26": {
+   "n": 363,
+   "total_bias_pred_minus_actual": 0.96,
+   "pace_pred_mean": 101.46,
+   "pace_actual_mean_per48": 101.06,
+   "ppp_pred_mean": 1.1365,
+   "ppp_actual_mean": 1.1389,
+   "bias_share_possessions": 0.94,
+   "bias_points_from_possessions": 1.62,
+   "bias_points_from_efficiency": 0.1,
+   "overtime_games_share": 0.033,
+   "bias_regulation_only": 1.83,
+   "env_eff_mean": 1.001,
+   "env_pace_mean": 1.0035,
+   "home_bias": 0.51,
+   "away_bias": 0.44,
+   "bias_by_month": {
+    "2025-11": {
+     "n": 41,
+     "bias": 2.44
+    },
+    "2025-12": {
+     "n": 64,
+     "bias": -0.06
+    },
+    "2026-01": {
+     "n": 77,
+     "bias": 5.42
+    },
+    "2026-02": {
+     "n": 63,
+     "bias": 3.55
+    },
+    "2026-03": {
+     "n": 79,
+     "bias": -1.66
+    },
+    "2026-04": {
+     "n": 39,
+     "bias": -6.66
+    }
+   }
+  },
+  "2026-27": {
+   "n": 121,
+   "total_bias_pred_minus_actual": 3.48,
+   "pace_pred_mean": 101.69,
+   "pace_actual_mean_per48": 99.78,
+   "ppp_pred_mean": 1.1212,
+   "ppp_actual_mean": 1.1243,
+   "bias_share_possessions": 1.022,
+   "bias_points_from_possessions": 4.41,
+   "bias_points_from_efficiency": -0.09,
+   "overtime_games_share": 0.058,
+   "bias_regulation_only": 4.73,
+   "env_eff_mean": 0.9884,
+   "env_pace_mean": 1.0048,
+   "home_bias": 1.38,
+   "away_bias": 2.09,
+   "bias_by_month": {
+    "2026-10": {
+     "n": 35,
+     "bias": 5.31
+    },
+    "2026-11": {
+     "n": 86,
+     "bias": 2.73
+    }
+   }
+  }
+ },
+ "team_totals": {
+  "2025-26": {
+   "by_team_bias_range": [
+    -4.8,
+    7.6
+   ],
+   "teams_with_abs_bias_gt5": 2,
+   "strong_offense_bias (pred top quartile)": -0.55,
+   "weak_offense_bias (pred bottom quartile)": 0.37,
+   "home_bias": 0.51,
+   "away_bias": 0.44
+  },
+  "2026-27": {
+   "by_team_bias_range": [
+    -6.5,
+    13.8
+   ],
+   "teams_with_abs_bias_gt5": 7,
+   "strong_offense_bias (pred top quartile)": 1.29,
+   "weak_offense_bias (pred bottom quartile)": 2.27,
+   "home_bias": 1.38,
+   "away_bias": 2.09
+  }
+ },
+ "game_challengers": {
+  "TOTAL_ENV_K15": {
+   "2025-26": {
+    "n": 363,
+    "mae_champion": 15.09,
+    "mae_challenger": 15.1,
+    "bias_challenger": 1.05,
+    "gain_ci95": [
+     -0.02,
+     0.0
+    ]
+   },
+   "2026-27": {
+    "n": 121,
+    "mae_champion": 15.08,
+    "mae_challenger": 14.94,
+    "bias_challenger": 2.89,
+    "gain_ci95": [
+     0.04,
+     0.25
+    ]
+   }
+  },
+  "TOTAL_ONLINE_BIAS": {
+   "2025-26": {
+    "n": 363,
+    "mae_champion": 15.09,
+    "mae_challenger": 15.12,
+    "bias_challenger": -0.75,
+    "gain_ci95": [
+     -0.22,
+     0.16
+    ]
+   },
+   "2026-27": {
+    "n": 121,
+    "mae_champion": 15.08,
+    "mae_challenger": 14.73,
+    "bias_challenger": 1.18,
+    "gain_ci95": [
+     -0.1,
+     0.82
+    ]
+   }
+  },
+  "PACE_NO_DOUBLE_COUNT": {
+   "2025-26": {
+    "n": 363,
+    "mae_champion": 15.09,
+    "mae_challenger": 15.07,
+    "bias_challenger": -0.26,
+    "gain_ci95": [
+     -0.11,
+     0.16
+    ]
+   },
+   "2026-27": {
+    "n": 121,
+    "mae_champion": 15.08,
+    "mae_challenger": 14.8,
+    "bias_challenger": 1.87,
+    "gain_ci95": [
+     -0.05,
+     0.58
+    ]
+   }
+  },
+  "MARGIN_STRETCH": {
+   "2025-26": {
+    "n": 262,
+    "mae_champion": 10.48,
+    "mae_challenger": 10.46,
+    "gain_ci95": [
+     -0.1,
+     0.15
+    ]
+   },
+   "2026-27": {
+    "n": 121,
+    "mae_champion": 11.59,
+    "mae_challenger": 11.58,
+    "gain_ci95": [
+     -0.07,
+     0.08
+    ]
+   }
+  }
+ },
+ "correlations": {
+  "2025-26": {
+   "simulated_mean_corr": {
+    "CHAMPION": {
+     "pts_reb": 0.134,
+     "pts_ast": 0.152,
+     "reb_ast": 0.097,
+     "min_pts": 0.379,
+     "teammates_pts": -0.065
+    },
+    "JOINT_MC_V2_A": {
+     "pts_reb": 0.194,
+     "pts_ast": 0.201,
+     "reb_ast": 0.142,
+     "min_pts": 0.364,
+     "teammates_pts": -0.074
+    },
+    "JOINT_MC_V2_B": {
+     "pts_reb": 0.135,
+     "pts_ast": 0.049,
+     "reb_ast": 0.086,
+     "min_pts": 0.378,
+     "teammates_pts": -0.066
+    },
+    "JOINT_MC_V2_C": {
+     "pts_reb": 0.196,
+     "pts_ast": 0.093,
+     "reb_ast": 0.124,
+     "min_pts": 0.363,
+     "teammates_pts": -0.074
+    }
+   }
+  },
+  "2026-27": {
+   "simulated_mean_corr": {
+    "CHAMPION": {
+     "pts_reb": 0.145,
+     "pts_ast": 0.163,
+     "reb_ast": 0.104,
+     "min_pts": 0.389,
+     "teammates_pts": -0.058
+    },
+    "JOINT_MC_V2_A": {
+     "pts_reb": 0.202,
+     "pts_ast": 0.21,
+     "reb_ast": 0.15,
+     "min_pts": 0.375,
+     "teammates_pts": -0.067
+    },
+    "JOINT_MC_V2_B": {
+     "pts_reb": 0.145,
+     "pts_ast": 0.059,
+     "reb_ast": 0.093,
+     "min_pts": 0.391,
+     "teammates_pts": -0.057
+    },
+    "JOINT_MC_V2_C": {
+     "pts_reb": 0.203,
+     "pts_ast": 0.103,
+     "reb_ast": 0.13,
+     "min_pts": 0.375,
+     "teammates_pts": -0.066
+    }
+   }
+  },
+  "real_teammates_pts_corr (rotation players >=20 mpg)": -0.001,
+  "real_teammates_minutes_corr": 0.103,
+  "real_home_away_score_corr": 0.146
+ }
+}

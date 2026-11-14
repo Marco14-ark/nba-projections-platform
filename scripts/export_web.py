@@ -15,6 +15,7 @@ from nba_platform.core.timeutil import ET
 from nba_platform.sim.calibration_v2 import apply_production
 from nba_platform.sources.teams import TEAMS
 from nba_platform.odds import evaluate as odds_eval
+from nba_platform.injuries import impact as inj_impact
 from nba_platform.odds.store import OddsStore
 
 D = os.environ.get("NBA_DATA_DIR", "/home/claude/data")
@@ -194,6 +195,30 @@ for g in games:
                         "pts": x["markets"].get("PTS", {}).get("mean"), "reb": x["markets"].get("REB", {}).get("mean"),
                         "ast": x["markets"].get("AST", {}).get("mean")}
                        for x in sorted(v, key=lambda z: -(z["minutes"].get("mean") or 0))[:3]] for s, v in by_team.items()}
+    # V9: injury-impact-ranking-v1 (presentation triage only; the model already used every absence)
+    important = {}
+    lab0 = plabels[0] if plabels else None
+    for side in ("home", "away"):
+        tid = g[f"{side}_team_id"]
+        proj = {pl["player_id"]: {"min": pl["minutes"].get("mean"), "pts": (pl["markets"].get("PTS") or {}).get("mean")}
+                for pl in players.values() if pl["scenario"] == lab0 and pl["home"] == (side == "home")}
+        absn = [i for i in injuries[side] if i["status"] != "AVAILABLE"]
+        ranked = inj_impact.rank_absences(season, tid, g["game_date_et"], absn,
+                                          {k: (v or {}).get("position") for k, v in names.items()}, proj, {})
+        for o in ranked:
+            for b in o["beneficiaries"]:
+                b["player"] = pname(b["player_id"])
+            # computed effect only where the model actually simulated both cases (conditional scenarios)
+            eff = {"PLAYS": [], "OUT": []}
+            for gm_ in game_markets:
+                for cnd in gm_["conditions"]:
+                    if cnd["player_id"] == o["player_id"]:
+                        pw = gm_["markets"]["p_home_win"] if side == "home" else gm_["markets"]["p_away_win"]
+                        eff["OUT" if cnd["state"] == "OUT" else "PLAYS"].append(pw)
+            o["scenario_effect"] = ({"team_win_if_plays": r(np.mean(eff["PLAYS"]), 4), "team_win_if_out": r(np.mean(eff["OUT"]), 4)}
+                                    if eff["PLAYS"] and eff["OUT"] else None)
+            o.pop("score", None)
+        important[side] = ranked
     forecast = {"snapshot_id": sid, "window": snap["refresh_window"], "created_at": snap["created_at"], "flag": snap["flag"],
                 "model": snap["model_name"], "model_version": snap["model_version"], "stack": ctx.get("stack"),
                 "calibration": ctx.get("calibration"), "input_hash": snap["input_hash"][:12],
@@ -201,7 +226,8 @@ for g in games:
                 "injury_report": {k: (ctx.get("sources") or {}).get(k) for k in ("injury_report_url", "captured_at")},
                 "publication": {"GAME": gp["publication"] if gp else None, "PROPS": pp["publication"] if pp else None,
                                 "weights_source": (gp or {}).get("weights_source")},
-                "game_markets": game_markets, "starters": starters, "injuries": injuries, "key_players": key_players,
+                "game_markets": game_markets, "starters": starters, "injuries": injuries, "important_absences": important,
+                "impact_model": inj_impact.VERSION, "key_players": key_players,
                 "has_distributions": any("dist" in p for p in players.values()),
                 "late_status_conflicts": [{"player": pname(p), **{k: v[k] for k in ("status", "report_ts")}} for p, v in late.items()]}
     for pl in players.values():
@@ -260,6 +286,8 @@ for g in games:
     lite["odds_status"] = forecast["odds"]["status"]
     lite["odds_books"] = forecast["odds"]["books"]
     lite["injuries"] = {s: [i for i in v if i["status"] not in ("AVAILABLE",)] for s, v in injuries.items()}
+    lite["important_absences"] = {s_: [{k: o[k] for k in ("player_id", "player", "status", "category", "long_absence")}
+                                       for o in v if o["show_main"]] for s_, v in important.items()}
     lite["markets"] = game_markets[0]["markets"] if len(game_markets) == 1 else None
     lite["scenarios"] = [{"label": x["label"], "conditions": x["conditions"], "weight": x["weight"],
                           "p_home_win": x["markets"]["p_home_win"], "proj_home": x["markets"]["proj_home"],
@@ -335,6 +363,12 @@ if os.path.exists(GV):
     results["historical"]["game_markets_v8"] = {k: {x: v[x] for x in ("n_games", "dates", "moneyline", "spread", "total", "team_totals", "cohorts")}
                                                 for k, v in gv.items() if k.split("|")[0] in ("STACK_V2_ENV", "STACK_V3_SIGMA", "STACK_V4_BLOWOUT")
                                                 and k.split("|")[1] == "v3"}
+V9R = os.path.join(ROOT, "docs", "validation", "v9_research.json")
+if os.path.exists(V9R):
+    v9 = json.load(open(V9R))
+    results["historical"]["v9_research"] = {k: v9[k] for k in ("minutes_audit", "props_error_decomposition", "totals_decomposition",
+                                                               "game_challengers", "injury_context", "team_totals", "correlations",
+                                                               "minutes_challenger_profile_recal") if k in v9}
 GR = os.path.join(D, "odds", "market_gate_report.json")
 results["market_gate"] = json.load(open(GR)) if os.path.exists(GR) else None
 json.dump(results, open(os.path.join(OUT, "results.json"), "w"), separators=(",", ":"), default=str)

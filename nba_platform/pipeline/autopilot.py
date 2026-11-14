@@ -81,10 +81,11 @@ class Autopilot:
                  play_rates_fn: Callable[[str], dict] | None = None, with_sim: bool = False,
                  sim_n: int = 10_000, anchor_margin_fn: Callable | None = None,
                  context_extra_fn: Callable | None = None, stack_name: str = "STACK_V2_ENV",
-                 game_features: "pd.DataFrame | None" = None):
+                 game_features: "pd.DataFrame | None" = None, rates_cfg=None):
         self.s, self.cfg, self.n_sims = store, cfg or MinutesConfig(), n_sims
         self._engines: dict[str, MinutesEngine] = {}
         self._rates: dict[str, OpportunityRates] = {}
+        self.rates_cfg = rates_cfg               # None -> RatesConfig() (champion)
         self.with_sim, self.sim_n = with_sim, sim_n
         # anchor_margin_fn(game_row, home_inputs, away_inputs) -> expected home margin from
         # NBA_TEAM_RATING_V2 (0.295*point-diff + 0.845*lineup RAPM). None -> point-diff rating.
@@ -108,7 +109,7 @@ class Autopilot:
     def rates_for(self, game_date: str) -> OpportunityRates:
         if game_date not in self._rates:
             logs, games = load_frames(self.s, game_date)
-            self._rates[game_date] = OpportunityRates(logs, games, game_date)
+            self._rates[game_date] = OpportunityRates(logs, games, game_date, self.rates_cfg)
         return self._rates[game_date]
 
     MAX_PAIRS_CONDITIONAL = 4        # conditional (unweighted) scenario pairs stored per game

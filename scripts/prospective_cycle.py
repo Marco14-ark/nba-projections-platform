@@ -44,7 +44,9 @@ py = sys.executable
 # 3) settlement (published distributions only), each category in its own DB
 dbs = {"PROSPECTIVE": os.path.join(D, "live", "prospective.db")}
 SHADOWS = {"STACK_V3_SIGMA": {"sigma_dof_correct": True, "sigma_dof_scope": "starters"},
-           "STACK_V4_BLOWOUT": {"blowout_feature": "garbage", "dnp_garbage": True}}
+           "STACK_V4_BLOWOUT": {"blowout_feature": "garbage", "dnp_garbage": True},
+           "STACK_V5_PACE": {}}
+SHADOW_RATES = {"STACK_V5_PACE": {"pace_norm": "team_mean"}}     # V9: pace without double-counted environment
 if "--no-shadow" not in sys.argv:
     for name in SHADOWS:
         dbs["SHADOW:" + name] = os.path.join(D, "live", f"shadow_{name}.db")
@@ -63,7 +65,8 @@ if "--no-forecast" not in sys.argv:
     for cat, db in dbs.items():
         if cat.startswith("SHADOW:"):
             name = cat.split(":", 1)[1]
-            runs[cat] = [bp, db, "--stack", name, "--minutes-cfg", json.dumps(SHADOWS[name])]
+            runs[cat] = [bp, db, "--stack", name, "--minutes-cfg", json.dumps(SHADOWS[name]),
+                         "--rates-cfg", json.dumps(SHADOW_RATES.get(name, {}))]
     log["forecast"] = {}
     for cat, args in runs.items():
         r = subprocess.run([py, os.path.join(ROOT, "scripts/live_forecast.py"), *args], capture_output=True, text=True)
