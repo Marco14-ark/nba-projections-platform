@@ -34,7 +34,10 @@ for f in os.listdir(os.path.join(W, "games")):
     for side in ("home", "away"):
         for i in fc["injuries"][side]:
             checked["injuries"] += 1
-            if not (i["source"] and i["report_ts"] and i["observed_at"]):
+            # official injury report entries carry the report's own time; pregame box-score inactives are
+            # timestamped by the moment the box was captured (the box has no report time of its own)
+            need_report_ts = i["source"] == "nba_injury_report"
+            if not (i["source"] and i["observed_at"] and (i["report_ts"] or not need_report_ts)):
                 problems.append(f"{f}: injury without source/timestamp {i['player_id']}")
     # V8: every published sportsbook price must exist in the real odds history (no invented / synthetic lines)
     for o in (fc.get("odds") or {}).get("rows", []):

@@ -70,3 +70,9 @@ def test_return_projection_scale_only_with_challenger(league):
     assert p.proj_scale == 1.0 or any(f.startswith("RETURN") for f in p.flags)
     eng0 = _eng(league)
     assert all(eng0.player_params(q, T0, ROSTER, i < 5).proj_scale == 1.0 for i, q in enumerate(ROSTER))
+
+
+def test_export_check_accepts_box_inactives_but_not_untimed_reports():
+    import re
+    src = open("scripts/check_web_export.py").read()
+    assert 'need_report_ts = i["source"] == "nba_injury_report"' in src
