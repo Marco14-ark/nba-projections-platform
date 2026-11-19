@@ -5,6 +5,7 @@ never alters a snapshot. Every number comes from a frozen pre-tip snapshot or an
   python scripts/export_web.py OUT_DIR [--days 3]
 Writes: meta.json, slate.json, games/<gid>.json, players/index.json, players/<pid>.json, results.json
 Private fields are never exported (no account data, no file paths, no input payloads)."""
+import glob
 import json, os, sqlite3, sys
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -372,6 +373,15 @@ if os.path.exists(V9R):
 V10R = os.path.join(ROOT, "docs", "validation", "v10_report.json")
 if os.path.exists(V10R):
     results["historical"]["v10"] = json.load(open(V10R))
+# prospective (real frozen snapshots only): per-model paired comparison and forecast age
+try:
+    from nba_platform.eval.prospective import models as _pm, window_age as _wa
+    _dbs = {champ["name"]: os.path.join(D, "live", "prospective.db"),
+            **{os.path.basename(p_)[7:-3]: p_ for p_ in sorted(glob.glob(os.path.join(D, "live", "shadow_*.db")))}}
+    results["prospective_models"] = _pm(_dbs, champ["name"])
+    results["window_age"] = _wa(os.path.join(D, "live", "prospective.db"))
+except Exception as e:      # never block the export
+    results["prospective_models"] = {"error": f"{type(e).__name__}: {e}"}
 GR = os.path.join(D, "odds", "market_gate_report.json")
 results["market_gate"] = json.load(open(GR)) if os.path.exists(GR) else None
 json.dump(results, open(os.path.join(OUT, "results.json"), "w"), separators=(",", ":"), default=str)

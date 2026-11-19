@@ -76,3 +76,22 @@ def test_export_check_accepts_box_inactives_but_not_untimed_reports():
     import re
     src = open("scripts/check_web_export.py").read()
     assert 'need_report_ts = i["source"] == "nba_injury_report"' in src
+
+
+def test_next_window_targets_inside_windows_and_merges():
+    import importlib.util
+    from datetime import datetime, timezone
+    spec = importlib.util.spec_from_file_location("nw", "scripts/ci/next_window.py")
+    nw = importlib.util.module_from_spec(spec); spec.loader.exec_module(nw)
+    from nba_platform.pipeline.autopilot import OFFSETS_MIN
+    slate = {"games": [{"game_id": "A", "tip_utc": "2026-11-19T00:00:00+00:00", "status": "SCHEDULED"},
+                       {"game_id": "B", "tip_utc": "2026-11-19T00:03:00+00:00", "status": "SCHEDULED"},
+                       {"game_id": "F", "tip_utc": "2026-11-18T23:00:00+00:00", "status": "FINAL"}]}
+    m = nw.targets(slate, datetime(2026, 11, 18, 12, tzinfo=timezone.utc))
+    assert len(m) == 4 and all(set(g) == {"A", "B"} for _, g in m)        # A and B merged, FINAL ignored
+    # every target falls after its window opens and before the next one (so the cycle freezes that window)
+    tip = datetime(2026, 11, 19, tzinfo=timezone.utc)
+    opens = sorted(OFFSETS_MIN.values(), reverse=True)
+    for (t, _), off in zip(m, opens):
+        lead = (tip - t).total_seconds() / 60
+        assert off - 6 <= lead < off

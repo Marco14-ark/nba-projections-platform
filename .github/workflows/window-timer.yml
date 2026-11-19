@@ -1,0 +1,53 @@
+name: window-timer
+# Precision trigger for the pregame refresh windows. GitHub's cron runs late (30-200 min observed),
+# so this job reads the published slate, sleeps on the runner until the next window target, and then
+# dispatches nba-cycle. Public repository => runner minutes are free. Re-armed by every nba-cycle run;
+# the hourly cron only restarts the chain if it ever breaks. A newer timer cancels a sleeping one.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Optional ISO-8601 UTC override (testing)"
+        required: false
+        default: ""
+  schedule:
+    - cron: "23 * * * *"
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: window-timer
+  cancel-in-progress: true
+jobs:
+  wait-and-fire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compute next window target
+        id: t
+        run: |
+          git fetch -q --depth 1 origin state
+          git show FETCH_HEAD:web/data/slate.json > "$RUNNER_TEMP/slate.json"
+          if [ -n "${{ inputs.target }}" ]; then
+            T="${{ inputs.target }}"; W=$(( $(date -d "$T" +%s) - $(date -u +%s) ))
+            echo "{\"target\":\"$T\",\"wait_s\":$W,\"override\":true}" > "$RUNNER_TEMP/next.json"
+          else
+            python scripts/ci/next_window.py "$RUNNER_TEMP/slate.json" > "$RUNNER_TEMP/next.json"
+          fi
+          cat "$RUNNER_TEMP/next.json"
+          echo "wait=$(python -c "import json;d=json.load(open('$RUNNER_TEMP/next.json'));print('' if d['wait_s'] is None else max(0,d['wait_s']))")" >> "$GITHUB_OUTPUT"
+          echo "target=$(python -c "import json;print(json.load(open('$RUNNER_TEMP/next.json'))['target'] or '')")" >> "$GITHUB_OUTPUT"
+      - name: Sleep until target
+        if: steps.t.outputs.wait != ''
+        run: |
+          echo "sleeping ${{ steps.t.outputs.wait }} s until ${{ steps.t.outputs.target }}"
+          sleep ${{ steps.t.outputs.wait }}
+          date -u +%FT%TZ
+      - name: Fire nba-cycle
+        if: steps.t.outputs.wait != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X POST "repos/${{ github.repository }}/actions/workflows/nba-cycle.yml/dispatches" -f ref=main
+          echo "fired at $(date -u +%FT%TZ) for window target ${{ steps.t.outputs.target }}"
