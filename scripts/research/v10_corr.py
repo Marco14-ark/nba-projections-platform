@@ -13,7 +13,9 @@ from nba_platform.sim.rates import OpportunityRates, RatesConfig
 D = os.environ.get("NBA_DATA_DIR", "/home/claude/data")
 CFGS = {"CHAMPION": ({}, {}), "JOINT_MC_V2": ({}, {"form_sd": 0.1268, "team_use_sd": 0.0403, "ast_on_makes": True}),
         "JOINT_MC_V2_TEAM": ({}, {"team_use_sd": 0.0403}),
-        "MIN_V2_ROLE": ({"start_mix": True}, {})}
+        "MIN_V2_ROLE": ({"start_mix": True}, {}),
+        "MIN_V3_SCRIPT": ({}, {"script_two_pass": True}),
+        "SHOT_V3_TEAMVAR": ({}, {"team_use_sd": 0.0415, "team_tov_sd": 0.0612, "team_trip_sd": 0.0686})}
 start, end, step = sys.argv[1], sys.argv[2], int(sys.argv[3])
 L = pd.read_pickle(f"{D}/real_logs_v3.pkl"); G = pd.read_pickle(f"{D}/real_games_v3.pkl"); G = G[G["flags"].fillna("") == ""]
 dates = sorted(d for d in G.game_date_et.unique() if start <= d <= end)[::step]

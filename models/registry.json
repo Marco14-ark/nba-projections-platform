@@ -721,7 +721,23 @@
    "components": "minutes 1.2.0 + start_mix (MIN_V2_ROLE) + rates 1.1.0 + rating V2 blend + BETA_MKT",
    "db": "data/live/shadow_STACK_V6_MINROLE.db",
    "evidence": "V10 walk-forward: minutes CRPS -0.060 [-0.079,-0.040] (2025-26), -0.100 [-0.147,-0.054] (2026-27); props CRPS significantly better in 2025-26 on PTS/REB/AST/PRA/FGA/3PA, neutral-to-better in 2026-27; game markets unchanged",
-   "promotion_rule": "promote only after >= 40 prospectively settled games with props CRPS not worse than champion (paired CI) and no game-market deterioration"
+   "promotion_rule": "manual review only; >=40 settled games is the minimum to evaluate; requires consistent paired gains with CIs and no relevant deterioration"
+  },
+  {
+   "name": "STACK_V7_SCRIPT",
+   "role": "SHADOW",
+   "since": "2026-11-19",
+   "components": "champion + JointConfig(script_two_pass) (MIN_V3_SCRIPT)",
+   "db": "data/live/shadow_STACK_V7_SCRIPT.db",
+   "promotion_rule": "manual review only; >=40 settled games is the minimum to evaluate, not a reason to promote"
+  },
+  {
+   "name": "STACK_V8_TEAMVAR",
+   "role": "SHADOW",
+   "since": "2026-11-19",
+   "components": "champion + team-game shocks uses 0.0415 / tov 0.0612 / ft-trips 0.0686 (estimated 2024-25)",
+   "db": "data/live/shadow_STACK_V8_TEAMVAR.db",
+   "promotion_rule": "manual review only; >=40 settled games is the minimum to evaluate, not a reason to promote"
   },
   {
    "name": "STACK_V2_ENV",

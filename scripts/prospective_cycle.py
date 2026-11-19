@@ -46,9 +46,12 @@ dbs = {"PROSPECTIVE": os.path.join(D, "live", "prospective.db")}
 SHADOWS = {"STACK_V3_SIGMA": {"sigma_dof_correct": True, "sigma_dof_scope": "starters"},
            "STACK_V4_BLOWOUT": {"blowout_feature": "garbage", "dnp_garbage": True},
            "STACK_V5_PACE": {},
-           "STACK_V6_MINROLE": {"start_mix": True}}          # V10 MIN_V2_ROLE: starting five drawn per simulation until confirmed
+           "STACK_V6_MINROLE": {"start_mix": True},
+           "STACK_V7_SCRIPT": {},                              # V11 MIN_V3_SCRIPT: minutes follow the simulated scoreboard
+           "STACK_V8_TEAMVAR": {}}                             # V11 SHOT_V3_TEAMVAR: team-game opportunity shocks          # V10 MIN_V2_ROLE: starting five drawn per simulation until confirmed
 SHADOW_RATES = {"STACK_V5_PACE": {"pace_norm": "team_mean"}}     # V9: pace without double-counted environment
-SHADOW_JOINT = {}
+SHADOW_JOINT = {"STACK_V7_SCRIPT": {"script_two_pass": True},
+                "STACK_V8_TEAMVAR": {"team_use_sd": 0.0415, "team_tov_sd": 0.0612, "team_trip_sd": 0.0686}}
 if "--no-shadow" not in sys.argv:
     for name in SHADOWS:
         dbs["SHADOW:" + name] = os.path.join(D, "live", f"shadow_{name}.db")

@@ -21,6 +21,9 @@ CFG = {
     "JOINT_MC_V2": ({}, {}, {"form_sd": 0.1268, "team_use_sd": 0.0403, "ast_on_makes": True}),
     "JOINT_MC_V2_TEAM": ({}, {}, {"team_use_sd": 0.0403}),
     "STACK_V5_PACE": ({}, {"pace_norm": "team_mean"}, {}),
+    "CHAMPION_RECHECK": ({}, {}, {}),
+    "MIN_V3_SCRIPT": ({}, {}, {"script_two_pass": True}),
+    "SHOT_V3_TEAMVAR": ({}, {}, {"team_use_sd": 0.0415, "team_tov_sd": 0.0612, "team_trip_sd": 0.0686}),
 }
 name, start, end, step = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
 mc, rc, jc = CFG[name]

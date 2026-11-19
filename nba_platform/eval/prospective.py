@@ -58,8 +58,35 @@ def models(dbs: dict[str, str], champion: str) -> dict:
                     row["d_mae_vs_champion"] = round(float(np.mean([x for v in d.values() for x in v])), 3)
                     row["d_mae_ci"] = _boot(d)
             mk[m] = row
-        out[name] = {"games": len({k[0] for k in s}), "markets": mk}
+        ng = len({k[0] for k in s})
+        out[name] = {"games": ng, "markets": mk}
+        if name != champion:
+            out[name]["gate"] = promotion_gate(mk, ng)
     return out
+
+
+KEY_MARKETS = ("MIN", "PTS", "REB", "AST", "PRA", "GAME_TOTAL", "GAME_MARGIN")
+MIN_GAMES = 40
+
+
+def promotion_gate(markets: dict, games: int) -> dict:
+    """Never promotes anything by itself. 40 settled games is only the minimum to START evaluating;
+    a shadow is a CANDIDATE_FOR_MANUAL_REVIEW only if no key market deteriorates significantly, at
+    least two key markets improve significantly (paired CI entirely below 0), and the point estimate
+    is not worse on PTS and PRA."""
+    sig_better = [m for m in KEY_MARKETS if (markets.get(m) or {}).get("d_mae_ci") and markets[m]["d_mae_ci"][1] < 0]
+    sig_worse = [m for m in KEY_MARKETS if (markets.get(m) or {}).get("d_mae_ci") and markets[m]["d_mae_ci"][0] > 0]
+    core_ok = all((markets.get(m) or {}).get("d_mae_vs_champion", 1) <= 0 for m in ("PTS", "PRA"))
+    if games < MIN_GAMES:
+        st = "INSUFFICIENT_SAMPLE"
+    elif sig_worse:
+        st = "DETERIORATION"
+    elif len(sig_better) >= 2 and core_ok:
+        st = "CANDIDATE_FOR_MANUAL_REVIEW"
+    else:
+        st = "NO_CONSISTENT_GAIN"
+    return {"status": st, "games": games, "min_games": MIN_GAMES, "significantly_better": sig_better,
+            "significantly_worse": sig_worse, "auto_promotion": False}
 
 
 def window_age(path: str) -> dict:

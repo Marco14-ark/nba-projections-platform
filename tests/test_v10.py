@@ -95,3 +95,22 @@ def test_next_window_targets_inside_windows_and_merges():
     for (t, _), off in zip(m, opens):
         lead = (tip - t).total_seconds() / 60
         assert off - 6 <= lead < off
+
+
+def test_promotion_gate_never_automatic():
+    from nba_platform.eval.prospective import promotion_gate
+    good = {m: {"d_mae_vs_champion": -0.1, "d_mae_ci": [-0.2, -0.01]} for m in ("MIN", "PTS", "REB", "AST", "PRA")}
+    assert promotion_gate(good, 39)["status"] == "INSUFFICIENT_SAMPLE"
+    g = promotion_gate(good, 45)
+    assert g["status"] == "CANDIDATE_FOR_MANUAL_REVIEW" and g["auto_promotion"] is False
+    bad = {**good, "GAME_TOTAL": {"d_mae_vs_champion": 0.3, "d_mae_ci": [0.05, 0.6]}}
+    assert promotion_gate(bad, 80)["status"] == "DETERIORATION"
+    flat = {m: {"d_mae_vs_champion": -0.01, "d_mae_ci": [-0.05, 0.03]} for m in ("MIN", "PTS", "PRA")}
+    assert promotion_gate(flat, 80)["status"] == "NO_CONSISTENT_GAIN"
+
+
+def test_new_joint_switches_off_by_default_keep_champion_tag():
+    from nba_platform.sim.game_sim import JointConfig
+    assert JointConfig().tag() == "f0.000_t0.000_a0"
+    assert JointConfig(script_two_pass=True).tag() != JointConfig().tag()
+    assert JointConfig(team_tov_sd=0.06).tag() != JointConfig().tag()

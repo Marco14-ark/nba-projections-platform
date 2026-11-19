@@ -259,11 +259,18 @@ function renderStatus() {
     ${S.sys ? `<a class="pill" href="#results" style="text-decoration:none"><span class="dot ${S.sys.ok ? "good" : "bad"}"></span>Sistema <b>${S.sys.ok ? "OK" : "con fallas"}</b> · ${ago(S.sys.run_finished_at)}</a>` : ""}`;
 }
 
-function datesAvailable() { return [...new Set(S.slate.games.map(g => g.date_et))].sort(); }
+// today in the viewer's own time zone (e.g. America/Mexico_City), as YYYY-MM-DD
+const localToday = () => new Date().toLocaleDateString("en-CA");
+const gameLocalDate = g => new Date(g.tip_utc).toLocaleDateString("en-CA");
+// dates shown: today and later; a past date only while one of its games is not final yet
+// (finished games live in Results)
+function datesAvailable() {
+  const t = localToday();
+  return [...new Set(S.slate.games.filter(g => gameLocalDate(g) >= t || g.status !== "FINAL").map(gameLocalDate))].sort();
+}
 function defaultDate() {
-  const ds = datesAvailable();
-  const upcoming = S.slate.games.filter(g => g.status !== "FINAL" && g.forecast).map(g => g.date_et).sort();
-  return upcoming[0] || ds[ds.length - 1];
+  const ds = datesAvailable(), t = localToday();
+  return ds.includes(t) ? t : (ds.find(d => d > t) || ds[ds.length - 1]);
 }
 function dateChips() {
   return `<div class="bar" role="group" aria-label="Fecha">${datesAvailable().map(d => {
@@ -367,7 +374,8 @@ function gameCard(g) {
 }
 
 function viewOverview() {
-  const gs = S.slate.games.filter(g => g.date_et === S.date);
+  const gs = S.slate.games.filter(g => gameLocalDate(g) === S.date)
+    .sort((a, b) => (a.status === "FINAL") - (b.status === "FINAL") || a.tip_utc.localeCompare(b.tip_utc));
   const withF = gs.filter(g => g.forecast);
   $("#app").innerHTML = `
     <div class="section-title"><h2>Partidos</h2><span class="muted small">Horarios en tu zona (${esc(tz)}). Proyecciones congeladas antes del inicio.</span></div>
@@ -487,7 +495,7 @@ function pcard(p) {
 }
 
 async function propsFor(date) {
-  const gs = S.slate.games.filter(g => g.date_et === date && g.forecast && g.status !== "FINAL");
+  const gs = S.slate.games.filter(g => gameLocalDate(g) === date && g.forecast && g.status !== "FINAL");
   const det = await Promise.all(gs.map(g => game(g.game_id)));
   const out = [];
   for (const d of det) {
@@ -543,7 +551,7 @@ function marketsRow(g, sc, m) {
     <td class="n">${pct(m.p_ot)}</td><td class="small">${(g.forecast?.odds?.books || []).length ? g.forecast.odds.books.map(BOOK_ES).map(esc).join(", ") : `<span class="tag">NO MARKET DATA</span>`}</td></tr>`;
 }
 async function viewMarkets() {
-  const gs = S.slate.games.filter(g => g.date_et === S.date && g.forecast);
+  const gs = S.slate.games.filter(g => gameLocalDate(g) === S.date && g.forecast);
   $("#app").innerHTML = `<div class="section-title"><h2>Game Markets</h2><span class="muted small">Moneyline, spread, total y team totals justos del modelo (sin margen).</span></div>${dateChips()}<div class="empty">Cargando…</div>`;
   bindDates(viewMarkets);
   const det = await Promise.all(gs.map(g => game(g.game_id)));
@@ -861,7 +869,8 @@ function prospCard(R) {
   const MK = ["MIN", "PTS", "REB", "AST", "PRA", "GAME_TOTAL", "GAME_MARGIN"];
   const LB = { MIN: "Minutos", PTS: "PTS", REB: "REB", AST: "AST", PRA: "PRA", GAME_TOTAL: "Total partido", GAME_MARGIN: "Margen" };
   const cell = (x, champ) => !x ? "—" : champ ? `${x.mae.toFixed(2)}` : `${x.mae.toFixed(2)}${x.d_mae_vs_champion != null ? `<div class="small ${x.d_mae_ci && x.d_mae_ci[1] < 0 ? "" : "muted"}" style="${x.d_mae_ci && x.d_mae_ci[1] < 0 ? "color:var(--good)" : x.d_mae_ci && x.d_mae_ci[0] > 0 ? "color:var(--bad)" : ""}">${x.d_mae_vs_champion > 0 ? "+" : ""}${x.d_mae_vs_champion} [${x.d_mae_ci ? x.d_mae_ci.join(", ") : "—"}]</div>` : ""}`;
-  const rows = Object.entries(PM).map(([n, v]) => `<tr><td>${esc(n)}${n === S.meta.champion ? ' <span class="tag win">Champion</span>' : ' <span class="tag">shadow</span>'}<div class="small muted">${v.games} partidos</div></td>${MK.map(m => `<td class="n">${cell(v.markets[m], n === S.meta.champion)}</td>`).join("")}</tr>`).join("");
+  const GT = { INSUFFICIENT_SAMPLE: "muestra insuficiente", DETERIORATION: "empeora algún mercado", CANDIDATE_FOR_MANUAL_REVIEW: "candidato a revisión", NO_CONSISTENT_GAIN: "sin mejora consistente" };
+  const rows = Object.entries(PM).map(([n, v]) => `<tr><td>${esc(n)}${n === S.meta.champion ? ' <span class="tag win">Champion</span>' : ' <span class="tag">shadow</span>'}<div class="small muted">${v.games} partidos${v.gate ? ` · ${esc(GT[v.gate.status] || v.gate.status)}` : ""}</div></td>${MK.map(m => `<td class="n">${cell(v.markets[m], n === S.meta.champion)}</td>`).join("")}</tr>`).join("");
   let age = "";
   if (WA && WA.paired) {
     const pr = Object.entries(WA.paired).map(([k, v]) => `<tr><td>${esc(k)}</td>${["MIN", "PTS", "REB", "AST", "TOTAL", "MARGIN"].map(m => v[m] ? `<td class="n">${v[m].d_mae > 0 ? "+" : ""}${v[m].d_mae}<div class="small muted">[${v[m].ci ? v[m].ci.join(", ") : "—"}] · ${v[m].games} part.</div></td>` : `<td class="n">—</td>`).join("")}</tr>`).join("");
@@ -1003,6 +1012,24 @@ function route() {
   renderStatus();
   window.addEventListener("hashchange", route);
   route();
+  // keep an open tab current: re-read the published data every 5 min and when the tab becomes visible
+  const refresh = async () => {
+    try {
+      const [m, sl, rs] = await Promise.all([getJSON("data/meta.json"), getJSON("data/slate.json"), getJSON("data/results.json")]);
+      const changed = m.generated_at !== S.meta.generated_at;
+      [S.meta, S.slate, S.results] = [m, sl, rs];
+      try { S.live = await getJSON("data/live.json"); } catch (e) { }
+      try { S.sys = await getJSON("data/status.json"); } catch (e) { }
+      if (!datesAvailable().includes(S.date)) S.date = defaultDate();
+      renderStatus();
+      const h = location.hash.slice(1) || "overview";
+      const busy = document.activeElement && ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName);
+      if (changed) { S.games = {}; S.teams = {}; }
+      if (changed && !busy && !document.querySelector(".drawer.open") && ["overview", "markets", "props", "opps", "results"].includes(h)) route();
+    } catch (e) { }
+  };
+  setInterval(refresh, 5 * 60 * 1000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
 })();
 </script>
 </body>

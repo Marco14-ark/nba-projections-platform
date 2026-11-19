@@ -180,9 +180,14 @@ for g in games:
             pl["minutes"].update(cand[0])
     late = {i["player_id"]: i for side in ("home", "away") for i in injuries[side]
             if i["after_snapshot"] and i["status"] in ("OUT", "DOUBTFUL", "NOT_WITH_TEAM", "SUSPENDED")}
+    conflict_ids = set()
     for pl in players.values():
         if pl["player_id"] in late and (pl["minutes"].get("mean") or 0) > 0:
             pl["late_status"] = {k: late[pl["player_id"]][k] for k in ("status", "reason", "report_ts")}
+            conflict_ids.add(pl["player_id"])
+    # only players the frozen snapshot still projected to play are real conflicts; a later report that
+    # repeats an absence the snapshot already used is not
+    late = {k: v for k, v in late.items() if k in conflict_ids}
     starters = {}
     for side in ("home", "away"):
         sc = ctx["scenarios"][side][0]

@@ -100,9 +100,20 @@ class JointConfig:
     form_sd: float = 0.0
     team_use_sd: float = 0.0
     ast_on_makes: bool = False
+    # V11 SHOT_V3_TEAMVAR: team-game shocks on turnover and free-throw-trip rates (shared by teammates;
+    # SDs estimated on 2024-25 as variance in excess of sampling noise)
+    team_tov_sd: float = 0.0
+    team_trip_sd: float = 0.0
+    # V11 MIN_V3_SCRIPT: minutes respond to the SIMULATED scoreboard of the same draw (second pass)
+    script_two_pass: bool = False
 
     def tag(self) -> str:
-        return f"f{self.form_sd:.3f}_t{self.team_use_sd:.3f}_a{int(self.ast_on_makes)}"
+        t = f"f{self.form_sd:.3f}_t{self.team_use_sd:.3f}_a{int(self.ast_on_makes)}"
+        if self.team_tov_sd or self.team_trip_sd:
+            t += f"_v{self.team_tov_sd:.3f}_{self.team_trip_sd:.3f}"
+        if self.script_two_pass:
+            t += "_s2"
+        return t
 
 
 class GameSimulator:
@@ -134,9 +145,17 @@ class GameSimulator:
         uses = _multinomial(rng, uses_T, g("use")[None, :] * poss_on * form)
         f_tov = g("f_tov") * D["d_tov"]
         f_trip = g("f_trip") * D["d_trip"]
-        f_fga = np.clip(1.0 - f_tov - f_trip, 0.05, None)
-        split = np.stack([f_fga, f_tov, f_trip], -1)                       # (k, 3)
-        sp = rng.multinomial(uses, _norm_rows(np.broadcast_to(split, (n, k, 3)).copy()))
+        if self.j.team_tov_sd > 0 or self.j.team_trip_sd > 0:
+            st, sr = self.j.team_tov_sd, self.j.team_trip_sd
+            ut = np.exp(rng.normal(-0.5 * st ** 2, st, n))[:, None] if st > 0 else np.ones((n, 1))
+            ur = np.exp(rng.normal(-0.5 * sr ** 2, sr, n))[:, None] if sr > 0 else np.ones((n, 1))
+            ft, fr = f_tov[None, :] * ut, f_trip[None, :] * ur
+            ff = np.clip(1.0 - ft - fr, 0.05, None)
+            split = np.stack([ff, ft, fr], -1)                             # (n, k, 3)
+        else:
+            f_fga = np.clip(1.0 - f_tov - f_trip, 0.05, None)
+            split = np.broadcast_to(np.stack([f_fga, f_tov, f_trip], -1), (n, k, 3))  # (k, 3)
+        sp = rng.multinomial(uses, _norm_rows(np.array(split, dtype=float, copy=True)))
         fga, tov, trips = sp[..., 0], sp[..., 1], sp[..., 2]
         fg3a = rng.binomial(fga, np.clip(g("p3") * D["d_p3"], 0.0, 0.97)[None, :])
         fg2a = fga - fg3a
@@ -195,7 +214,7 @@ class GameSimulator:
 
     # ------------------------------------------------------------------ public
     def _run(self, home: TeamInput, away: TeamInput, n: int, seed: int, latent: np.ndarray | None,
-             mu: float = 0.0, rho: float = 0.0, exp_pts: float = 115.0):
+             mu: float = 0.0, rho: float = 0.0, exp_pts: float = 115.0, script: np.ndarray | None = None):
         ss = np.random.SeedSequence([seed, 2026])
         r_min, r_pace, r_h, r_a, r_ra = (np.random.default_rng(s) for s in ss.spawn(5))
         if latent is None:
@@ -206,9 +225,10 @@ class GameSimulator:
             tau = self.m.sd_margin * norm.ppf(0.5 + self.m.p_ot / 2)
             tie = np.abs(latent) < tau
             n_ot = np.where(tie, r_min.geometric(1 - self.m.p_ot_cont, n), 0)
-            bx = self.m.bx_from_margin(np.where(tie, 0.0, latent), n_ot, seed)
+            sc = latent if script is None else script          # scoreboard that drives the rotation
+            bx = self.m.bx_from_margin(np.where(tie, 0.0, sc), n_ot, seed)
             shock = rho * (latent - mu) / (2.0 * exp_pts)
-        mg = None if latent is None else np.where(n_ot > 0, 0.0, latent)
+        mg = None if latent is None else np.where(n_ot > 0, 0.0, latent if script is None else script)
         mh = self.m.simulate_team(home.team_id, home.available, home.starters, home.caps, bx, n_ot, seed, margin=mg,
                                   starters_confirmed=home.confirmed)
         ma = self.m.simulate_team(away.team_id, away.available, away.starters, away.caps, bx, n_ot, seed + 1,
@@ -253,6 +273,12 @@ class GameSimulator:
             mu_script = self.rating_margin(home.team_id, away.team_id) if anchor == "rating" else mu
         latent = np.random.default_rng([seed, 99]).normal(mu_script, sd_m, N)
         H, A, n_ot, P = self._run(home, away, N, seed, latent, mu, 1.0, exp_pts)
+        if self.j.script_two_pass:
+            # MIN_V3_SCRIPT: coaches react to the score of THIS simulated game, not to the latent script.
+            # Re-draw the rotation with the first pass's simulated margin (same seeds, same OT draws),
+            # then re-simulate the box score with those minutes. Pregame inputs only.
+            m1 = (H["pts"].sum(1) - A["pts"].sum(1)).astype(float)
+            H, A, n_ot, P = self._run(home, away, N, seed, latent, mu, 1.0, exp_pts, script=m1)
         hs, as_ = H["pts"].sum(1).astype(float), A["pts"].sum(1).astype(float)
         mg, tt = hs - as_, hs + as_
         # Gaussian fit of the simulated (margin, total), target = same means, measured SDs, independent
