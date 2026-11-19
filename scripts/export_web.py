@@ -225,7 +225,13 @@ for g in games:
                                     if eff["PLAYS"] and eff["OUT"] else None)
             o.pop("score", None)
         important[side] = ranked
-    forecast = {"snapshot_id": sid, "window": snap["refresh_window"], "created_at": snap["created_at"], "flag": snap["flag"],
+    # refresh windows that were evaluated but produced no new snapshot (inputs unchanged): the frozen
+    # forecast was re-validated at that time, so the page can say so instead of looking stale
+    checks = [{"window": jr["job_id"].split(":")[1], "at": jr["finished_at"], "status": jr["status"]}
+              for jr in c.execute("SELECT job_id, finished_at, status FROM job_runs WHERE job_id LIKE ? ORDER BY finished_at",
+                                  (g["game_id"] + ":%",))]
+    forecast_checked = [x for x in checks if x["status"] == "SKIPPED" and x["at"] and x["at"] > snap["created_at"]]
+    forecast = {"snapshot_id": sid, "revalidated": forecast_checked[-1] if forecast_checked else None, "window": snap["refresh_window"], "created_at": snap["created_at"], "flag": snap["flag"],
                 "model": snap["model_name"], "model_version": snap["model_version"], "stack": ctx.get("stack"),
                 "calibration": ctx.get("calibration"), "input_hash": snap["input_hash"][:12],
                 "minutes_before_tip": r(ctx.get("minutes_before_tip"), 0), "data_flags": ctx.get("data_flags", []),
@@ -292,6 +298,7 @@ for g in games:
     lite["odds_status"] = forecast["odds"]["status"]
     lite["odds_books"] = forecast["odds"]["books"]
     lite["injuries"] = {s: [i for i in v if i["status"] not in ("AVAILABLE",)] for s, v in injuries.items()}
+    lite["revalidated"] = forecast.get("revalidated")
     lite["important_absences"] = {s_: [{k: o[k] for k in ("player_id", "player", "status", "category", "long_absence")}
                                        for o in v if o["show_main"]] for s_, v in important.items()}
     lite["markets"] = game_markets[0]["markets"] if len(game_markets) == 1 else None
@@ -384,7 +391,7 @@ try:
     _dbs = {champ["name"]: os.path.join(D, "live", "prospective.db"),
             **{os.path.basename(p_)[7:-3]: p_ for p_ in sorted(glob.glob(os.path.join(D, "live", "shadow_*.db")))}}
     results["prospective_models"] = _pm(_dbs, champ["name"])
-    _roles = {x["name"]: x.get("role") for x in REG["STACK"]}
+    _roles = {x.get("name"): x.get("role") for x in REG["STACK"] if x.get("name")}
     for _n, _v in results["prospective_models"].items():
         _v["role"] = "CHAMPION" if _n == champ["name"] else _roles.get(_n, "SHADOW")
     results["window_age"] = _wa(os.path.join(D, "live", "prospective.db"))

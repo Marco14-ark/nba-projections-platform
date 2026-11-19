@@ -181,11 +181,11 @@ const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const tfmt = iso => new Date(iso).toLocaleString("es-MX", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const hfmt = iso => new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
 const ago = iso => { const m = (Date.now() - new Date(iso)) / 60000; if (m < 60) return Math.round(m) + " min"; if (m < 48 * 60) return (m / 60).toFixed(1) + " h"; return Math.round(m / 1440) + " d"; };
-const WINDOW = { INITIAL: "Inicial", "6H": "6 h antes", "90M": "90 min antes", "30M": "30 min antes" };
+const WINDOW = { INITIAL: "Inicial", "6H": "6 h antes", "90M": "90 min antes", "30M": "30 min antes", "15M": "15 min antes" };
 const STATUS_ES = { OUT: "Fuera", QUESTIONABLE: "Duda", DOUBTFUL: "Improbable", PROBABLE: "Probable", AVAILABLE: "Disponible", NOT_WITH_TEAM: "No está con el equipo", SUSPENDED: "Suspendido", GTD: "Decisión de último momento" };
 const MKT = { PTS: "Puntos", REB: "Rebotes", AST: "Asistencias", "3PM": "Triples", PRA: "P+R+A", PR: "P+R", PA: "P+A", RA: "R+A" };
 const teamColor = {};
-const WRANK = { INITIAL: 0, "6H": 1, "90M": 2, "30M": 3 };
+const WRANK = { INITIAL: 0, "6H": 1, "90M": 2, "30M": 3, "15M": 4 };
 function expectedWindow(tipIso) { const m = (new Date(tipIso) - Date.now()) / 60000; return m <= 30 ? "30M" : m <= 90 ? "90M" : m <= 360 ? "6H" : "INITIAL"; }
 function gameState(g) {
   if (g.status === "FINAL") return "FINAL";
@@ -216,7 +216,9 @@ function liveLine(g) {
 function overdue(g) {
   const f = g.forecast; if (!f || gameState(g) !== "PREGAME") return "";
   const exp = expectedWindow(g.tip_utc);
-  return WRANK[exp] > WRANK[f.window] ? `<div class="small warnline">Actualización pendiente: ya corresponde la ventana "${esc(WINDOW[exp])}", pero la última captura publicada es "${esc(WINDOW[f.window] || f.window)}".</div>` : "";
+  // a window evaluated without input changes keeps the earlier snapshot: that is up to date, not overdue
+  const done = Math.max(WRANK[f.window] ?? 0, f.revalidated ? (WRANK[f.revalidated.window] ?? 0) : 0);
+  return WRANK[exp] > done ? `<div class="small warnline">Actualización pendiente: ya corresponde la ventana "${esc(WINDOW[exp])}", pero la última captura publicada es "${esc(WINDOW[f.window] || f.window)}".</div>` : "";
 }
 // exact statistics from stored Monte Carlo counts (same definitions as numpy, linear percentiles)
 function pmf(d) {
@@ -296,8 +298,10 @@ const stCls = st => st === "OUT" || st === "SUSPENDED" || st === "NOT_WITH_TEAM"
 const CAT_ES = { CRITICAL: "Crítica", HIGH: "Alta", MEDIUM: "Media", LOW: "Baja" };
 function freshLine(d) {
   const f = d.forecast, li = S.meta?.latest_injury_report;
-  const newer = li?.captured_at && f.injury_report?.captured_at && new Date(li.captured_at) - new Date(f.injury_report.captured_at) > 20 * 60000 && gameState(d) === "PREGAME";
-  return `<div class="small muted">Información usada en este pronóstico: snapshot congelado hace ${ago(f.created_at)} (${esc(WINDOW[f.window] || f.window)})${f.injury_report?.captured_at ? ` · reporte de lesiones capturado hace ${ago(f.injury_report.captured_at)}` : " · sin reporte oficial de lesiones aún"} · titulares ${f.starters.away.state === "CONFIRMED" && f.starters.home.state === "CONFIRMED" ? "confirmados" : "esperados por el modelo"}.</div>
+  const newer = li?.captured_at && f.injury_report?.captured_at && new Date(li.captured_at) - new Date(f.injury_report.captured_at) > 20 * 60000 && gameState(d) === "PREGAME"
+    && !(f.revalidated && new Date(f.revalidated.at) >= new Date(li.captured_at));
+  const rv = f.revalidated ? ` · revisado de nuevo en la ventana ${esc(WINDOW[f.revalidated.window] || f.revalidated.window)} hace ${ago(f.revalidated.at)}: sin cambios en lesiones ni quintetos, se mantiene este pronóstico` : "";
+  return `<div class="small muted">Información usada en este pronóstico: snapshot congelado hace ${ago(f.created_at)} (${esc(WINDOW[f.window] || f.window)})${rv}${f.injury_report?.captured_at ? ` · reporte de lesiones capturado hace ${ago(f.injury_report.captured_at)}` : " · sin reporte oficial de lesiones aún"} · titulares ${f.starters.away.state === "CONFIRMED" && f.starters.home.state === "CONFIRMED" ? "confirmados" : "esperados por el modelo"}.</div>
     ${newer ? `<div class="small warnline">Hay un reporte oficial de lesiones más reciente (${tfmt(li.captured_at)}) que el usado por este snapshot. El pronóstico congelado no cambia; la siguiente ventana lo incorpora.</div>` : ""}`;
 }
 function absencesCard(d) {
