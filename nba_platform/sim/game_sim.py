@@ -106,6 +106,10 @@ class JointConfig:
     team_trip_sd: float = 0.0
     # V11 MIN_V3_SCRIPT: minutes respond to the SIMULATED scoreboard of the same draw (second pass)
     script_two_pass: bool = False
+    # V11 MIN_V3_COHERENT: keep only scenarios whose final scoreboard is consistent with the script that
+    # drove the rotation: target corr(script, final margin) from the observed noise between the margin
+    # after Q3 and the final margin (sd 8.0, 2024-25 play-by-play, 1230 games); 0 = champion
+    script_coherent_sd: float = 0.0
 
     def tag(self) -> str:
         t = f"f{self.form_sd:.3f}_t{self.team_use_sd:.3f}_a{int(self.ast_on_makes)}"
@@ -113,6 +117,8 @@ class JointConfig:
             t += f"_v{self.team_tov_sd:.3f}_{self.team_trip_sd:.3f}"
         if self.script_two_pass:
             t += "_s2"
+        if self.script_coherent_sd:
+            t += f"_c{self.script_coherent_sd:.1f}"
         return t
 
 
@@ -288,6 +294,20 @@ class GameSimulator:
         z = np.vstack([mg, tt]).T - mean
         logw = -0.5 * np.einsum("ij,jk,ik->i", z, np.linalg.inv(T), z) + 0.5 * np.einsum("ij,jk,ik->i", z, np.linalg.inv(C), z)
         tilt_ok = np.all(np.diag(C) > np.diag(T))
+        if self.j.script_coherent_sd > 0:
+            # 3-D importance weights on (script, final margin, total): target script ~ N(mu, sl),
+            # final = script + e (e ~ N(0, se)), so the final margin keeps the measured predictive SD
+            # and correlates with the rotation script as real Q3 scores correlate with final scores
+            se = self.j.script_coherent_sd
+            sl2 = max(sd_m ** 2 - se ** 2, 1.0)
+            X = np.vstack([latent, mg, tt]).T
+            mp, Cp = X.mean(0), np.cov(X.T)
+            Tm = np.array([mean[0], mean[0], mean[1]])
+            Tc = np.array([[sl2, sl2, 0.0], [sl2, sd_m ** 2, 0.0], [0.0, 0.0, sd_t ** 2]])
+            zt, zp = X - Tm, X - mp
+            logw = (-0.5 * np.einsum("ij,jk,ik->i", zt, np.linalg.inv(Tc), zt)
+                    + 0.5 * np.einsum("ij,jk,ik->i", zp, np.linalg.inv(Cp), zp))
+            tilt_ok = True
         if tilt_ok:
             w = np.exp(logw - logw.max())
             w /= w.sum()

@@ -98,6 +98,32 @@
    "min_absmargin_starters": -0.046,
    "home_away_pts": 0.19,
    "poss_team_fga": 0.654
+  },
+  "MIN_V3_SCRIPT": {
+   "tm_pts": -0.059,
+   "tm_reb": -0.014,
+   "ast_tm_pts": 0.032,
+   "pts_ast": 0.199,
+   "pts_reb": 0.192,
+   "fga_pts": 0.705,
+   "fg3a_fg3m": 0.622,
+   "tm_min": 0.026,
+   "min_absmargin_starters": -0.036,
+   "home_away_pts": 0.19,
+   "poss_team_fga": 0.654
+  },
+  "SHOT_V3_TEAMVAR": {
+   "tm_pts": -0.064,
+   "tm_reb": -0.01,
+   "ast_tm_pts": 0.035,
+   "pts_ast": 0.175,
+   "pts_reb": 0.162,
+   "fga_pts": 0.691,
+   "fg3a_fg3m": 0.616,
+   "tm_min": 0.003,
+   "min_absmargin_starters": -0.056,
+   "home_away_pts": 0.19,
+   "poss_team_fga": 0.533
   }
  }
 }

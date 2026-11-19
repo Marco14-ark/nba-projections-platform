@@ -725,11 +725,13 @@
   },
   {
    "name": "STACK_V7_SCRIPT",
-   "role": "SHADOW",
+   "role": "RETIRED",
    "since": "2026-11-19",
    "components": "champion + JointConfig(script_two_pass) (MIN_V3_SCRIPT)",
    "db": "data/live/shadow_STACK_V7_SCRIPT.db",
-   "promotion_rule": "manual review only; >=40 settled games is the minimum to evaluate, not a reason to promote"
+   "promotion_rule": "manual review only; >=40 settled games is the minimum to evaluate, not a reason to promote",
+   "retired": "2026-11-19",
+   "reason": "backtest: props MAE worse in both seasons (PTS +0.027, PRA +0.035/+0.047, CIs > 0) and blowout coupling not improved; DB kept for history"
   },
   {
    "name": "STACK_V8_TEAMVAR",
@@ -738,6 +740,14 @@
    "components": "champion + team-game shocks uses 0.0415 / tov 0.0612 / ft-trips 0.0686 (estimated 2024-25)",
    "db": "data/live/shadow_STACK_V8_TEAMVAR.db",
    "promotion_rule": "manual review only; >=40 settled games is the minimum to evaluate, not a reason to promote"
+  },
+  {
+   "name": "STACK_V9_COHERENT",
+   "role": "SHADOW",
+   "since": "2026-11-19",
+   "components": "champion + JointConfig(script_coherent_sd=8.0) (MIN_V3_COHERENT; noise between margin after Q3 and final margin, 2024-25 pbp)",
+   "db": "data/live/shadow_STACK_V9_COHERENT.db",
+   "promotion_rule": "manual review only; >=40 settled games is the minimum to evaluate"
   },
   {
    "name": "STACK_V2_ENV",

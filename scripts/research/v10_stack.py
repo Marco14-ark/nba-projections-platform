@@ -24,6 +24,7 @@ CFG = {
     "CHAMPION_RECHECK": ({}, {}, {}),
     "MIN_V3_SCRIPT": ({}, {}, {"script_two_pass": True}),
     "SHOT_V3_TEAMVAR": ({}, {}, {"team_use_sd": 0.0415, "team_tov_sd": 0.0612, "team_trip_sd": 0.0686}),
+    "MIN_V3_COHERENT": ({}, {}, {"script_coherent_sd": 8.0}),
 }
 name, start, end, step = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
 mc, rc, jc = CFG[name]
