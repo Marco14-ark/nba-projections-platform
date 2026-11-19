@@ -155,6 +155,9 @@ if __name__ == "__main__":
         "JOINT_MC_V2 / JOINT_MC_V2_TEAM: cambios pequeños y no consistentes entre temporadas → descartados por ahora.",
         "MIN_V2_JOINT (reparto por rol): empeora MAE de minutos → descartado. MIN_V2_RETURN: efecto no significativo → descartado.",
         "SHOT_V2_USAGE (half-life corto de usage): empeora PTS/FTA en 2026-27 → descartado. SHOT_V2_LINEUP: elasticidad de usage estimada 1.06 (≈ proporcional, igual que el Champion) → sin cambio. SHOT_V2_BUDGET: el Champion ya asigna tiros dentro de un presupuesto de equipo.",
+        "V11 MIN_V3_SCRIPT (segunda pasada con el marcador simulado): empeora MAE de PTS (+0.027) y PRA (+0.035/+0.047) en ambas temporadas y no acerca la correlación minutos–paliza → retirado (STACK_V7_SCRIPT).",
+        "V11 MIN_V3_COHERENT: correlación minutos de titulares vs |margen| −0.066 → −0.183 (real −0.346); precisión neutral en 2025-26 y CRPS ligeramente peor en 2026-27 (PTS +0.006, PRA +0.010) → SHADOW STACK_V9_COHERENT.",
+        "V11 SHOT_V3_TEAMVAR: correlación posesiones–FGA del equipo 0.654 → 0.533 (real 0.299); CRPS del total −0.105 [−0.171, −0.039] en 2026-27, neutral en 2025-26; props neutrales → SHADOW STACK_V8_TEAMVAR.",
     ]
     json.dump(rep, open(os.path.join(ROOT, "docs/validation/v10_report.json"), "w"), indent=1, ensure_ascii=False)
     print(json.dumps(rep, ensure_ascii=False)[:6000])

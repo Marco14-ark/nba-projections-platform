@@ -384,6 +384,9 @@ try:
     _dbs = {champ["name"]: os.path.join(D, "live", "prospective.db"),
             **{os.path.basename(p_)[7:-3]: p_ for p_ in sorted(glob.glob(os.path.join(D, "live", "shadow_*.db")))}}
     results["prospective_models"] = _pm(_dbs, champ["name"])
+    _roles = {x["name"]: x.get("role") for x in REG["STACK"]}
+    for _n, _v in results["prospective_models"].items():
+        _v["role"] = "CHAMPION" if _n == champ["name"] else _roles.get(_n, "SHADOW")
     results["window_age"] = _wa(os.path.join(D, "live", "prospective.db"))
 except Exception as e:      # never block the export
     results["prospective_models"] = {"error": f"{type(e).__name__}: {e}"}

@@ -112,6 +112,19 @@
    "home_away_pts": 0.19,
    "poss_team_fga": 0.654
   },
+  "MIN_V3_COHERENT": {
+   "tm_pts": -0.066,
+   "tm_reb": -0.017,
+   "ast_tm_pts": 0.034,
+   "pts_ast": 0.173,
+   "pts_reb": 0.159,
+   "fga_pts": 0.688,
+   "fg3a_fg3m": 0.615,
+   "tm_min": -0.0,
+   "min_absmargin_starters": -0.183,
+   "home_away_pts": 0.186,
+   "poss_team_fga": 0.656
+  },
   "SHOT_V3_TEAMVAR": {
    "tm_pts": -0.064,
    "tm_reb": -0.01,
