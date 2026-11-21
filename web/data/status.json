@@ -1,0 +1,81 @@
+{
+ "run_finished_at": "2026-11-21T19:53:03+00:00",
+ "run_url": "https://github.com/Marco14-ark/nba-projections-platform/actions/runs/44943119579",
+ "runner": "GitHub Actions (ubuntu-latest)",
+ "steps": {
+  "probe": "success",
+  "fetch": "success",
+  "cycle": "success",
+  "export": "success",
+  "odds": "success",
+  "market_gate": "success"
+ },
+ "sources": {
+  "schedule (cdn.nba.com)": {
+   "ok": true,
+   "http": 200
+  },
+  "boxscore (cdn.nba.com)": {
+   "ok": true,
+   "http": 200
+  },
+  "playbyplay (cdn.nba.com)": {
+   "ok": true,
+   "http": 200
+  },
+  "injury report PDF (ak-static.cms.nba.com)": {
+   "ok": true,
+   "http": 200
+  },
+  "team roster (stats.nba.com)": {
+   "ok": false,
+   "http": 0
+  }
+ },
+ "archive": {
+  "before": 235,
+  "added": 0,
+  "duplicates_in_archive": 0
+ },
+ "snapshots_frozen_this_run": 0,
+ "games_settled_this_run": 0,
+ "odds": {
+  "checked_at": "2026-11-21T19:52:54+00:00",
+  "pending_games": 5,
+  "providers": {
+   "sportsgameodds": {
+    "configured": false,
+    "state": "NO_KEY",
+    "decision": null,
+    "http": null,
+    "error": null,
+    "events": null,
+    "quotes": null,
+    "unmatched_players": null,
+    "last_fetch": null
+   },
+   "the_odds_api": {
+    "configured": false,
+    "state": "NO_KEY",
+    "decision": null,
+    "http": null,
+    "error": null,
+    "events": null,
+    "quotes": null,
+    "unmatched_players": null,
+    "last_fetch": null
+   }
+  }
+ },
+ "settlement_this_run": [],
+ "cloud_settlements_total": {
+  "runs": 25,
+  "games": 52,
+  "first": "2026-11-15T03:29:23.496789+00:00"
+ },
+ "ok": true,
+ "errors": [],
+ "warnings": [
+  "optional source unavailable: team roster (stats.nba.com)"
+ ]
+}

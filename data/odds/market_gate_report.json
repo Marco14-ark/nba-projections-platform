@@ -1,0 +1,67 @@
+{
+ "generated_at": "2026-11-21T19:52:54+00:00",
+ "min_n": 300,
+ "rule": "model log loss < closing no-vig log loss (bootstrap 95% CI < 0) with n >= min_n",
+ "markets": {
+  "PTS": {
+   "status": "NOT_VALIDATED",
+   "n": 0
+  },
+  "REB": {
+   "status": "NOT_VALIDATED",
+   "n": 0
+  },
+  "AST": {
+   "status": "NOT_VALIDATED",
+   "n": 0
+  },
+  "3PM": {
+   "status": "NOT_VALIDATED",
+   "n": 0
+  },
+  "PRA": {
+   "status": "NOT_VALIDATED",
+   "n": 0
+  },
+  "PR": {
+   "status": "NOT_VALIDATED",
+   "n": 0
+  },
+  "PA": {
+   "status": "NOT_VALIDATED",
+   "n": 0
+  },
+  "RA": {
+   "status": "NOT_VALIDATED",
+   "n": 0
+  },
+  "FGA": {
+   "status": "NOT_VALIDATED",
+   "n": 0
+  },
+  "FGM": {
+   "status": "NOT_VALIDATED",
+   "n": 0
+  },
+  "3PA": {
+   "status": "NOT_VALIDATED",
+   "n": 0
+  },
+  "ML": {
+   "status": "NOT_VALIDATED",
+   "n": 0
+  },
+  "SPREAD": {
+   "status": "NOT_VALIDATED",
+   "n": 0
+  },
+  "TOTAL": {
+   "status": "NOT_VALIDATED",
+   "n": 0
+  },
+  "TEAM_TOTAL": {
+   "status": "NOT_VALIDATED",
+   "n": 0
+  }
+ }
+}
