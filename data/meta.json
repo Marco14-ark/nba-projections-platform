@@ -1,0 +1,88 @@
+{
+ "generated_at": "2026-11-28T12:31:02+00:00",
+ "champion": "STACK_V2_ENV",
+ "calibration": "BETA_MKT@2026-11-13",
+ "results_through": "2026-11-27",
+ "latest_injury_report": {
+  "report_ts": "2026-11-27T23:30:00-05:00",
+  "captured_at": "2026-11-28T04:43:19.298286+00:00"
+ },
+ "snapshots_total": 404,
+ "sportsbook_lines": {
+  "status": "NO_MARKET_DATA",
+  "providers": {
+   "sportsgameodds": {
+    "configured": false,
+    "unit": "objects",
+    "monthly_limit": 2500,
+    "state": "NO_KEY"
+   },
+   "the_odds_api": {
+    "configured": false,
+    "unit": "credits",
+    "monthly_limit": 500,
+    "state": "NO_KEY"
+   }
+  },
+  "checked_at": "2026-11-28T12:31:01+00:00",
+  "market_gate": {
+   "PTS": "NOT_VALIDATED",
+   "REB": "NOT_VALIDATED",
+   "AST": "NOT_VALIDATED",
+   "3PM": "NOT_VALIDATED",
+   "PRA": "NOT_VALIDATED",
+   "PR": "NOT_VALIDATED",
+   "PA": "NOT_VALIDATED",
+   "RA": "NOT_VALIDATED",
+   "FGA": "NOT_VALIDATED",
+   "FGM": "NOT_VALIDATED",
+   "3PA": "NOT_VALIDATED",
+   "ML": "NOT_VALIDATED",
+   "SPREAD": "NOT_VALIDATED",
+   "TOTAL": "NOT_VALIDATED",
+   "TEAM_TOTAL": "NOT_VALIDATED"
+  }
+ },
+ "calibration_params": {
+  "version": "BETA_MKT@2026-11-13",
+  "markets": {
+   "3PM": {
+    "a": 1.0376171761366118,
+    "b": 0.7496739690308575,
+    "c": 0.15631534407191539
+   },
+   "AST": {
+    "a": 0.8787939242172867,
+    "b": 0.8586663602286082,
+    "c": -0.07425720108747397
+   },
+   "PRA": {
+    "a": 0.8918290445243239,
+    "b": 0.5956102358329131,
+    "c": 0.1790561696537534
+   },
+   "PTS": {
+    "a": 0.9430183832213669,
+    "b": 0.6107767797584192,
+    "c": 0.19378382682432077
+   },
+   "REB": {
+    "a": 0.7945350426313323,
+    "b": 0.824127493634567,
+    "c": -0.11045287902141625
+   }
+  },
+  "eps": 0.0001,
+  "valid_for": "half-point lines; fitted on lines within the model fair line +-1..6"
+ },
+ "integrity": {
+  "team_mismatch": 0,
+  "post_tip_snapshots_exported": 0
+ },
+ "dates": [
+  "2026-11-27",
+  "2026-11-28",
+  "2026-11-29",
+  "2026-11-30"
+ ]
+}
