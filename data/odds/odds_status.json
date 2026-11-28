@@ -1,0 +1,18 @@
+{
+ "generated_at": "2026-11-28T12:31:01+00:00",
+ "providers": {
+  "sportsgameodds": {
+   "configured": false,
+   "unit": "objects",
+   "monthly_limit": 2500,
+   "state": "NO_KEY"
+  },
+  "the_odds_api": {
+   "configured": false,
+   "unit": "credits",
+   "monthly_limit": 500,
+   "state": "NO_KEY"
+  }
+ },
+ "pending_games": 5
+}
